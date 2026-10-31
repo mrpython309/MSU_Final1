@@ -12,6 +12,8 @@
 .env.backup
 .env.production
 .phpunit.result.cache
+*.pem
+.deploy/
 
 docker-compose.override.yml
 
