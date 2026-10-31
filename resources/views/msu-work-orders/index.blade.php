@@ -126,14 +126,15 @@
 
     @if($viewMode === 'item')
         <div class="table-responsive text-nowrap">
-            <table class="table table-hover mb-0 align-middle">
+            <table class="table table-hover mb-0 align-middle wo-item-table">
                 <thead>
                     <tr>
                         <th style="width:60px">S/No</th>
+                        <th class="text-center" style="width:80px">Actions</th>
                         <th>Branch</th>
                         <th>WO Number</th>
                         <th>WO Date</th>
-                        <th>Work Description</th>
+                        <th class="work-desc-col">Work Description</th>
                         <th>HSN</th>
                         <th class="text-end">Qty</th>
                         <th class="text-end">Rate</th>
@@ -142,7 +143,6 @@
                         <th class="text-end">Tax Value</th>
                         <th class="text-end">Net Value</th>
                         <th>Status</th>
-                        <th class="text-center" style="width:80px">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -150,34 +150,14 @@
                         @php $WO = $item->workOrder; @endphp
                         <tr>
                             <td class="text-muted">{{ ($items->currentPage() - 1) * $items->perPage() + $loop->iteration }}</td>
-                            <td>{{ $WO?->branch?->name ?? '--' }}</td>
-                            <td><strong>{{ $WO?->wo_number ?? '--' }}</strong></td>
-                            <td>{{ $WO?->wo_date?->format('d-m-Y') ?? '--' }}</td>
-                            <td>{{ $item->work_description ?: '--' }}</td>
-                            <td>{{ $item->hsn ?: '--' }}</td>
-                            <td class="text-end">{{ number_format((float) $item->quantity, 3) }}</td>
-                            <td class="text-end">{{ number_format((float) $item->price, 2) }}</td>
-                            <td class="text-end">{{ number_format($item->gross_value, 2) }}</td>
-                            <td class="text-end">{{ number_format((float) $item->tax, 2) }}</td>
-                            <td class="text-end">{{ number_format($item->tax_value, 2) }}</td>
-                            <td class="text-end">{{ number_format((float) $item->net_value, 2) }}</td>
-                            <td>
-                                @if($WO)
-                                <span class="badge bg-label-{{ $WO->statusEnum()->badgeClass() }}">
-                                    {{ $WO->statusEnum()->label() }}
-                                </span>
-                                @else
-                                --
-                                @endif
-                            </td>
                             <td class="text-center">
                                 @if($WO)
                                 <div class="dropdown">
                                     <button type="button" class="btn btn-sm btn-icon btn-outline-secondary dropdown-toggle hide-arrow"
-                                            data-bs-toggle="dropdown" aria-expanded="false">
+                                            data-bs-toggle="dropdown" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false">
                                         <i class="bx bx-dots-vertical-rounded"></i>
                                     </button>
-                                    <ul class="dropdown-menu dropdown-menu-end">
+                                    <ul class="dropdown-menu">
                                         @can('msu-work-order:view')
                                         <li>
                                             <a class="dropdown-item" href="{{ route('msu-work-orders.show', $WO) }}">
@@ -196,6 +176,28 @@
                                         @endcan
                                     </ul>
                                 </div>
+                                @endif
+                            </td>
+                            <td>{{ $WO?->branch?->name ?? '--' }}</td>
+                            <td><strong>{{ $WO?->wo_number ?? '--' }}</strong></td>
+                            <td>{{ $WO?->wo_date?->format('d-m-Y') ?? '--' }}</td>
+                            <td class="work-desc-col">
+                                <span class="work-desc-text" title="{{ $item->work_description }}">{{ $item->work_description ?: '--' }}</span>
+                            </td>
+                            <td>{{ $item->hsn ?: '--' }}</td>
+                            <td class="text-end">{{ number_format((float) $item->quantity, 3) }}</td>
+                            <td class="text-end">{{ number_format((float) $item->price, 2) }}</td>
+                            <td class="text-end">{{ number_format($item->gross_value, 2) }}</td>
+                            <td class="text-end">{{ number_format((float) $item->tax, 2) }}</td>
+                            <td class="text-end">{{ number_format($item->tax_value, 2) }}</td>
+                            <td class="text-end">{{ number_format((float) $item->net_value, 2) }}</td>
+                            <td>
+                                @if($WO)
+                                <span class="badge bg-label-{{ $WO->statusEnum()->badgeClass() }}">
+                                    {{ $WO->statusEnum()->label() }}
+                                </span>
+                                @else
+                                --
                                 @endif
                             </td>
                         </tr>
@@ -221,6 +223,7 @@
                 <thead>
                     <tr>
                         <th style="width:60px">S/No</th>
+                        <th class="text-center" style="width:80px">Actions</th>
                         <th>Branch</th>
                         <th>WO Number</th>
                         <th>WO Date</th>
@@ -232,7 +235,6 @@
                         <th class="text-end">Misc Charges</th>
                         <th class="text-end">Grand Total</th>
                         <th>Status</th>
-                        <th class="text-center" style="width:80px">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -241,31 +243,13 @@
                         <td class="text-muted">
                             {{ ($workOrders->currentPage() - 1) * $workOrders->perPage() + $loop->iteration }}
                         </td>
-                        <td>{{ $po->branch?->name ?? '--' }}</td>
-                        <td><strong>{{ $po->wo_number }}</strong></td>
-                        <td>{{ $po->wo_date?->format('d-m-Y') }}</td>
-                        <td>{{ $po->vendor?->name ?? '--' }}</td>
-                        <td>{{ $po->department?->department_name ?? '--' }}</td>
-                        <td class="payment-term-col">
-                            @php $paymentTermName = $po->paymentTerm?->term_name; @endphp
-                            <span class="payment-term-text" title="{{ $paymentTermName }}">{{ $paymentTermName ?: '--' }}</span>
-                        </td>
-                        <td class="text-end">{{ $po->items->count() }}</td>
-                        <td class="text-end">{{ number_format((float) $po->total_value, 2) }}</td>
-                        <td class="text-end">{{ number_format((float) $po->miscellaneous_charges, 2) }}</td>
-                        <td class="text-end">{{ number_format((float) $po->grand_total, 2) }}</td>
-                        <td>
-                            <span class="badge bg-label-{{ $po->statusEnum()->badgeClass() }}">
-                                {{ $po->statusEnum()->label() }}
-                            </span>
-                        </td>
                         <td class="text-center">
                             <div class="dropdown">
                                 <button type="button" class="btn btn-sm btn-icon btn-outline-secondary dropdown-toggle hide-arrow"
-                                        data-bs-toggle="dropdown" aria-expanded="false">
+                                        data-bs-toggle="dropdown" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false">
                                     <i class="bx bx-dots-vertical-rounded"></i>
                                 </button>
-                                <ul class="dropdown-menu dropdown-menu-end">
+                                <ul class="dropdown-menu">
                                     @can('msu-work-order:view')
                                     <li>
                                         <a class="dropdown-item" href="{{ route('msu-work-orders.show', $po) }}">
@@ -340,6 +324,24 @@
                                 </ul>
                             </div>
                         </td>
+                        <td>{{ $po->branch?->name ?? '--' }}</td>
+                        <td><strong>{{ $po->wo_number }}</strong></td>
+                        <td>{{ $po->wo_date?->format('d-m-Y') }}</td>
+                        <td>{{ $po->vendor?->name ?? '--' }}</td>
+                        <td>{{ $po->department?->department_name ?? '--' }}</td>
+                        <td class="payment-term-col">
+                            @php $paymentTermName = $po->paymentTerm?->term_name; @endphp
+                            <span class="payment-term-text" title="{{ $paymentTermName }}">{{ $paymentTermName ?: '--' }}</span>
+                        </td>
+                        <td class="text-end">{{ $po->items->count() }}</td>
+                        <td class="text-end">{{ number_format((float) $po->total_value, 2) }}</td>
+                        <td class="text-end">{{ number_format((float) $po->miscellaneous_charges, 2) }}</td>
+                        <td class="text-end">{{ number_format((float) $po->grand_total, 2) }}</td>
+                        <td>
+                            <span class="badge bg-label-{{ $po->statusEnum()->badgeClass() }}">
+                                {{ $po->statusEnum()->label() }}
+                            </span>
+                        </td>
                     </tr>
                     @empty
                     <tr>
@@ -376,6 +378,19 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+table.table.wo-item-table {
+    width: max-content;
+}
+.wo-item-table .work-desc-col,
+.wo-item-table .work-desc-text {
+    width: 360px;
+    max-width: 360px;
+    white-space: normal;
+}
+.wo-item-table .work-desc-text {
+    display: block;
+    overflow-wrap: anywhere;
 }
 </style>
 @endsection

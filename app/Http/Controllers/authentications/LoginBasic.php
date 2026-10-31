@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\authentications;
 
 use App\Http\Controllers\Controller;
+use App\Support\DashboardLanding;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -27,7 +28,9 @@ class LoginBasic extends Controller
     )) {
         $request->session()->regenerate();
 
-        return redirect()->route('dashboard');
+        $landing = DashboardLanding::routeName(Auth::user());
+
+        return redirect()->route($landing ?? 'dashboard');
     }
 
     return back()->withErrors([

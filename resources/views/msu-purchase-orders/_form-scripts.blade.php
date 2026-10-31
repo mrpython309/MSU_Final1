@@ -15,15 +15,12 @@
         var previewPoNumberUrl = @json(route('msu-purchase-orders.preview-po-number'));
         var formCompanyId = @json($formCompanyId ?? session('global_company_id'));
         var defaultCompanyCode = @json($companyCode ?? 'MSULLP');
-        var poCompanyId = @json($poCompanyId ?? null);
         var isEditPo = @json(isset($msuPurchaseOrder));
         var paymentTermsListUrl = @json(route('payment-terms.list-manage'));
         var paymentTermsBulkUrl = @json(route('payment-terms.bulk-save'));
         var miscChargesListUrl = @json(route('miscellaneous-charges.list-manage'));
         var miscChargesBulkUrl = @json(route('miscellaneous-charges.bulk-save'));
         var csrfToken = @json(csrf_token());
-        var initialBranchId = @json(isset($msuPurchaseOrder) ? (string) $msuPurchaseOrder->branch_id : '');
-        var initialPoDate = @json(isset($msuPurchaseOrder) && $msuPurchaseOrder->po_date ? $msuPurchaseOrder->po_date->format('Y-m-d') : '');
         var initialPoNumber = @json(isset($msuPurchaseOrder) ? $msuPurchaseOrder->po_number : '');
 
         var paymentTermsDeletedIds = [];
@@ -729,9 +726,8 @@
         function refreshPoNumberPreview() {
             var branchId = String($('#branch_id').val() || '');
             var poDate = $('#po_date').val();
-            var sameCompany = !poCompanyId || String(formCompanyId || '') === String(poCompanyId || '');
 
-            if (isEditPo && sameCompany && branchId === String(initialBranchId || '') && poDate === initialPoDate) {
+            if (isEditPo) {
                 if (poPreviewRequest && poPreviewRequest.abort) {
                     poPreviewRequest.abort();
                 }

@@ -45,6 +45,9 @@
 
 @section('content')
 @include('partials.content-zoom-open')
+@php
+    $canManageAssets = auth()->user()?->canManageAssets() ?? false;
+@endphp
 
     <div class="d-flex justify-content-between align-items-center mb-4">
       <div>
@@ -166,6 +169,7 @@
                          
                     </div>
 
+                @if ($canManageAssets)
                 <div class="col-md-3">
                     <label class="form-label">Asset Custodian</label>
                     <select class="form-select select2" name="custodian_id">
@@ -177,6 +181,7 @@
                         @endforeach
                     </select>
                 </div>
+                @endif
 
                 <div class="col-md-3">
                     <label class="form-label" for="per_page">Per Page</label>
@@ -204,14 +209,14 @@
                 <h5 class="mb-0">Assets List</h5>
             </div>
             <div class="d-flex gap-2">
-                @can('asset:view')
+                @if ($canManageAssets)
                 <a href="{{ route('asset.export', request()->query()) }}" class="btn btn-outline-success btn-sm">
                     <i class="bx bx-export me-1"></i> Excel
                 </a>
                 <a href="{{ route('asset.export-pdf', request()->query()) }}" class="btn btn-outline-danger btn-sm">
                     <i class="bx bxs-file-pdf me-1"></i> PDF
                 </a>
-                @endcan
+                @endif
                 @can('asset:create')
 
                 <a href="{{ route('asset.import') }}" class="btn btn-primary btn-sm"> <i class="bx bx-import me-1"></i> Import Asset</a>
@@ -238,9 +243,13 @@
                         <th>Product Sub Categories</th>
                         <th>Status</th>
                         <th>Operational Status</th>
+                        @if ($canManageAssets)
                         <th>Asset Custodian</th>
+                        @endif
                         <th>Purchase Date</th>
+                        @if ($canManageAssets)
                         <th>Invoice Amount</th>
+                        @endif
                     </tr>
                 </thead>
                 <tbody>
@@ -334,19 +343,23 @@
 
                         <td>{!! $asset->operational_status_label ?? '--' !!}</td>
 
+                        @if ($canManageAssets)
                         <td>{{ $asset->custodian?->employee_name ?: '--' }}</td>
+                        @endif
 
                         <td>
                             {{ optional($asset->purchase_date)->format('d M Y') }}
                         </td>
 
+                        @if ($canManageAssets)
                         <td>
                             ₹ {{ number_format($asset->purchase_cost, 2) }}
                         </td>
+                        @endif
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="13" class="text-center py-5 text-muted">
+                        <td colspan="{{ $canManageAssets ? 13 : 11 }}" class="text-center py-5 text-muted">
                             No assets found
                         </td>
                     </tr>
@@ -483,11 +496,11 @@ $(function() {
         lengthChange: false,
         info: false,
         responsive: true,
-        dom: 'Bfrtip',
+        dom: @json($canManageAssets ? 'Bfrtip' : 'frtip'),
         language: { search: "Search assets:" },
         order: [[0, 'asc']],
         columnDefs: [{ orderable: false, targets: 1 }],
-        buttons: ['excel', 'pdf']
+        buttons: @json($canManageAssets ? ['excel', 'pdf'] : [])
     });
 
     

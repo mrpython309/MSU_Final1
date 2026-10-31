@@ -7,7 +7,7 @@ use App\Http\Requests\SaveEmployeeRequest;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\Department;
-use App\Models\Designation;
+use App\Models\Division;
 use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Auth;
@@ -20,7 +20,7 @@ class EmployeesController extends Controller
      */
     public function index()
     {
-        $employees = User::with(['designation', 'companies', 'roles.permissions'])
+        $employees = User::with(['division', 'companies', 'roles.permissions'])
             ->where('id', '!=', 1)
             ->where('is_user', 'yes')
             ->orderByDesc('id')
@@ -34,7 +34,7 @@ class EmployeesController extends Controller
      */
     public function create()
     {
-        $designations = Designation::where('status', 'active')->get();
+        $divisions = Division::where('status', 'active')->orderBy('division_name')->get();
         $roles = Role::where('id', '!=', 1)->get();
         $companies = Company::where('status', 'active')->get();
         $departments = Department::where('status', 'active')->get();
@@ -50,7 +50,7 @@ class EmployeesController extends Controller
             : collect();
 
         return view('employee.create', compact(
-            'designations',
+            'divisions',
             'roles',
             'companies',
             'departments',
@@ -112,7 +112,15 @@ class EmployeesController extends Controller
     {
         $employee->load(['companies', 'branches', 'departments', 'roles']);
 
-        $designations = Designation::where('status', 'active')->get();
+        $divisions = Division::query()
+            ->where(function ($query) use ($employee) {
+                $query->where('status', 'active');
+                if ($employee->division_id) {
+                    $query->orWhere('id', $employee->division_id);
+                }
+            })
+            ->orderBy('division_name')
+            ->get();
         $roles = Role::where('id', '!=', 1)->get();
         $companies = Company::where('status', 'active')->get();
         $companyIds = $employee->companies->pluck('id')->toArray();
@@ -125,7 +133,7 @@ class EmployeesController extends Controller
         $departments = Department::where('status', 'active')->get();
 
         return view('employee.edit', compact(
-            'designations',
+            'divisions',
             'roles',
             'companies',
             'employee',

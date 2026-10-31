@@ -19,7 +19,7 @@
                             @if($supportTicket->asset_id) required @endif>
                             <option value="">Select Vendor</option>
                             @foreach($vendors as $vendor)
-                                <option value="{{ $vendor->id }}">{{ $vendor->name }}</option>
+                                <option value="{{ $vendor->id }}" @selected(old('vendor_id') == $vendor->id)>{{ $vendor->name }}</option>
                             @endforeach
                         </select>
                         @error('vendor_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -75,6 +75,29 @@
 
 @once
 <script>
+document.addEventListener('DOMContentLoaded', function () {
+    const modal = document.getElementById('makeascompletemodel');
+    if (!modal || typeof window.jQuery === 'undefined' || !jQuery.fn.select2) {
+        return;
+    }
+
+    function initVendorSearch() {
+        const $vendor = jQuery('#vendor_id');
+        if (!$vendor.length || $vendor.data('select2')) {
+            return;
+        }
+
+        $vendor.select2({
+            dropdownParent: jQuery('#makeascompletemodel .modal-content'),
+            placeholder: 'Search vendor',
+            allowClear: true,
+            width: '100%'
+        });
+    }
+
+    modal.addEventListener('shown.bs.modal', initVendorSearch);
+});
+
 document.addEventListener('change', function (event) {
     const input = event.target.closest('#completed_files');
     if (!input || !input.files) {

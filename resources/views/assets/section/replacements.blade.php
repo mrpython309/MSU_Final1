@@ -22,6 +22,7 @@
             <table class="table border-top table-border-bottom-0">
                 <thead>
                     <tr>
+                        <th>Actions</th>
                         <th>Date</th>
                         <th>Old Serial No</th>
                         <th>New Serial No</th>
@@ -29,13 +30,38 @@
                         <th>New Condition</th> 
                         <th>Reason</th> 
                         <th>Location</th>
-                        <th>Actions</th>
                     </tr>
                 </thead>
 
                 <tbody>
                     @forelse($asset->replacements as $replacement)
                         <tr>
+
+                            <td class="text-truncate">
+
+                                 <div class="d-flex align-items-center">
+                                     @can('asset.replacement:edit')
+                                    <a href="{{ route('asset.replacement.edit', $replacement) }}"
+                                       class="btn btn-icon">
+                                        <i class="icon-base bx bx-edit icon-md"></i>
+                                    </a>
+                                    @endcan
+
+                                     @can('asset.replacement:delete')
+
+                                    <form method="POST"
+                                          action="{{ route('asset.replacement.destroy', $replacement) }}">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button class="dropdown-item delete-record">
+                                            <i class="icon-base bx bx-trash me-1 icon-md"></i>
+                                        </button>
+                                    </form>
+
+                                    @endcan
+
+                                </div>
+                            </td>
 
                             <td>
                                 {{ \Carbon\Carbon::parse($replacement->replacement_date)->format('d M Y') }}
@@ -68,32 +94,6 @@
                                 {{ $replacement->branch->name ?? '--' }}
                                 <br>
                                 {{ $replacement->location->location_name ?? '--' }}
-                            </td>
-
-                            <td class="text-truncate">
-
-                                 <div class="d-flex align-items-center">
-                                     @can('asset.replacement:edit')
-                                    <a href="{{ route('asset.replacement.edit', $replacement) }}"
-                                       class="btn btn-icon">
-                                        <i class="icon-base bx bx-edit icon-md"></i>
-                                    </a>
-                                    @endcan
-
-                                     @can('asset.replacement:delete')
-
-                                    <form method="POST"
-                                          action="{{ route('asset.replacement.destroy', $replacement) }}">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button class="dropdown-item delete-record">
-                                            <i class="icon-base bx bx-trash me-1 icon-md"></i>
-                                        </button>
-                                    </form>
-
-                                    @endcan
-
-                                </div>
                             </td>
 
                         </tr>

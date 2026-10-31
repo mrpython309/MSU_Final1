@@ -28,7 +28,7 @@ class SaveSupportTicketRequest extends FormRequest
 
             'branch_id'      => ['required', 'exists:branches,id'],
 
-            'department_id' => ['required', 'exists:departments,id'],
+            'division_id' => ['required', 'exists:divisions,id'],
 
             'priority'       => ['required', 'in:low,normal,high,urgent'],
 

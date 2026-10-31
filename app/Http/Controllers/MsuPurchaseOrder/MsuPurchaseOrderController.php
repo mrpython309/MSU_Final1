@@ -162,6 +162,7 @@ class MsuPurchaseOrderController extends Controller implements HasMiddleware
                 'purchaseOrder.branch.company',
                 'itemMaster.productCategory',
                 'itemMaster.productSubCategory',
+                'itemMaster.unit',
             ])
             ->whereHas('purchaseOrder', function ($q) use ($request) {
                 $this->applyPoFilters($q, $request);
@@ -196,11 +197,13 @@ class MsuPurchaseOrderController extends Controller implements HasMiddleware
                             $po?->po_number,
                             optional($po?->po_date)->format('d-m-Y'),
                             $po?->vendor?->name,
+                            $po?->vendor?->gst_number,
                             $item->item_code,
                             $item->item_name,
                             $item->hsn,
                             $item->itemMaster?->productCategory?->category_name,
                             $item->itemMaster?->productSubCategory?->sub_category_name,
+                            $item->itemMaster?->unit?->unit_name ?: ($item->itemMaster?->uom ?: null),
                             (float) $item->quantity,
                             (float) $item->price,
                             $item->gross_value,
@@ -215,8 +218,8 @@ class MsuPurchaseOrderController extends Controller implements HasMiddleware
                 public function headings(): array
                 {
                     return [
-                        'Company', 'Branch', 'PO Number', 'PO Date', 'Vendor',
-                        'Item Code', 'Item Name', 'HSN', 'Product Category', 'Product Sub Category',
+                        'Company', 'Branch', 'PO Number', 'PO Date', 'Vendor', 'Vendor GST',
+                        'Item Code', 'Item Name', 'HSN', 'Product Category', 'Product Sub Category', 'UOM',
                         'Qty', 'Rate', 'Gross Value', 'Tax %', 'Tax Value', 'Net Value', 'Status',
                     ];
                 }
@@ -371,21 +374,8 @@ class MsuPurchaseOrderController extends Controller implements HasMiddleware
 
         DB::transaction(function () use ($request, $msuPurchaseOrder) {
             $validated = $request->validated();
-            
-            // Check if branch or date changed, and regenerate PO number if necessary
-            $poNumber = $msuPurchaseOrder->po_number;
-            if ($msuPurchaseOrder->branch_id != ($validated['branch_id'] ?? null) || $msuPurchaseOrder->po_date->format('Y-m-d') !== \Carbon\Carbon::parse($validated['po_date'])->format('Y-m-d')) {
-                $numberGenerator = app(\App\Services\Procurement\DocumentNumberGenerator::class);
-                $branch = \App\Models\Branch::with('company')->find($validated['branch_id']);
-                if ($branch) {
-                    $branchCode = $branch->code ?: $branch->name;
-                    $companyCode = $branch->company?->code ?: 'MSULLP';
-                    $poNumber = $numberGenerator->nextMsuPoNumber($companyCode, $branchCode, $validated['po_date']);
-                }
-            }
 
             $msuPurchaseOrder->update([
-                'po_number' => $poNumber,
                 'po_date' => $validated['po_date'],
                 'delivery_date' => $validated['delivery_date'] ?? null,
                 'date_of_commencement' => $validated['date_of_commencement'] ?? ($validated['po_date'] ?? null),
@@ -637,11 +627,7 @@ class MsuPurchaseOrderController extends Controller implements HasMiddleware
         $previewPoNumber = app(DocumentNumberGenerator::class)
             ->previewMsuPoNumber($companyCode, $branchCode, $poDate);
 
-        $displayPoNumber = $po
-            && (string) $companyId === (string) $poCompanyId
-            && (string) $selectedBranchId === (string) $po->branch_id
-            ? $po->po_number
-            : $previewPoNumber;
+        $displayPoNumber = $po?->po_number ?: $previewPoNumber;
 
         return [
             'vendors' => Vendor::active()->orderBy('name')->get(),

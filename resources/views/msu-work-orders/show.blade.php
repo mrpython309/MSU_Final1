@@ -275,52 +275,55 @@
             <div class="col-md-6 col-lg-5">
                 <table class="table table-bordered border-secondary mb-0">
                     <tbody>
-                        <tr>
-                            <td>Total Value (Items)</td>
-                            <td class="text-end"><strong>{{ number_format($msuWorkOrder->total_value, 2) }}</strong></td>
-                        </tr>
                         @php
+                            $totalItemTax = $msuWorkOrder->items->sum(fn ($item) => (float) $item->tax_value);
+                            $totalMiscValue = $totalMiscHeader;
+                            $totalMiscTax = $msuWorkOrder->charges && $msuWorkOrder->charges->count() > 0
+                                ? $msuWorkOrder->charges->sum(fn ($c) => (float) $c->tax_amount)
+                                : (float) $msuWorkOrder->miscellaneous_tax;
+                            $totalExcludingTax = (float) $msuWorkOrder->total_value + $totalMiscValue;
+
                             $sgst = (float) $msuWorkOrder->sgst;
                             $cgst = (float) $msuWorkOrder->cgst;
                             $igst = (float) $msuWorkOrder->igst;
-                            
+
                             $displayIgst = $igst;
                             $displaySgst = $sgst;
                             $displayCgst = $cgst;
-                            
+
                             $isInterState = false;
                             if ($msuWorkOrder->branch && $msuWorkOrder->vendor) {
-                                $branchState = trim(strtolower((string)$msuWorkOrder->branch->state));
-                                $vendorState = trim(strtolower((string)$msuWorkOrder->vendor->state));
-                                
+                                $branchState = trim(strtolower((string) $msuWorkOrder->branch->state));
+                                $vendorState = trim(strtolower((string) $msuWorkOrder->vendor->state));
+
                                 if ($branchState === '') $branchState = 'karnataka';
                                 if ($vendorState === '') $vendorState = 'karnataka';
-                                
+
                                 if ($branchState !== $vendorState) {
                                     $isInterState = true;
                                 }
                             }
                         @endphp
-                        @if($msuWorkOrder->charges && $msuWorkOrder->charges->count() > 0)
-                            @foreach($msuWorkOrder->charges as $charge)
-                                <tr>
-                                    <td>{{ $charge->charge_name }}</td>
-                                    <td class="text-end"><strong>{{ number_format((float) $charge->amount, 2) }}</strong></td>
-                                </tr>
-                            @endforeach
-                        @else
-                            @if($totalMiscHeader > 0)
-                                <tr>
-                                    <td>Miscellaneous Charges</td>
-                                    <td class="text-end"><strong>{{ number_format($totalMiscHeader, 2) }}</strong></td>
-                                </tr>
-                            @endif
-                        @endif
                         <tr>
-                            <td>Total Miscellaneous Values</td>
-                            <td class="text-end"><strong>{{ number_format($totalMiscHeader, 2) }}</strong></td>
+                            <td>Total Item Value</td>
+                            <td class="text-end"><strong>{{ number_format($msuWorkOrder->total_value, 2) }}</strong></td>
                         </tr>
-                        
+                        <tr>
+                            <td>Total Misc Value</td>
+                            <td class="text-end"><strong>{{ number_format($totalMiscValue, 2) }}</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Total(Excluding Tax)</strong></td>
+                            <td class="text-end"><strong>{{ number_format($totalExcludingTax, 2) }}</strong></td>
+                        </tr>
+                        <tr>
+                            <td>Total Items Tax Value</td>
+                            <td class="text-end"><strong>{{ number_format($totalItemTax, 2) }}</strong></td>
+                        </tr>
+                        <tr>
+                            <td>Total Misc Tax Value</td>
+                            <td class="text-end"><strong>{{ number_format($totalMiscTax, 2) }}</strong></td>
+                        </tr>
                         @if($isInterState)
                             <tr>
                                 <td>IGST</td>
@@ -337,7 +340,7 @@
                             </tr>
                         @endif
                         <tr>
-                            <td><strong>Grand Total</strong></td>
+                            <td><strong>Total(Including Tax)</strong></td>
                             <td class="text-end"><strong>{{ number_format($dynamicGrandTotal, 2) }}</strong></td>
                         </tr>
                     </tbody>

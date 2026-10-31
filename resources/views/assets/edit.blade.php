@@ -109,9 +109,9 @@
 
         <div class="col-md-4">
             <label class="form-label">Asset Code <span class="text-danger">*</span></label>
-            <input type="text" name="asset_code" required
-                   class="form-control @error('asset_code') is-invalid @enderror"
-                   value="{{ old('asset_code', $asset->asset_code) }}">
+            <input type="text" name="asset_code" id="asset_code" required readonly
+                   class="form-control bg-light @error('asset_code') is-invalid @enderror"
+                   value="{{ $asset->asset_code }}">
             @error('asset_code')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
 
@@ -642,6 +642,21 @@
 @section('page-script')
 
 <script>
+
+function syncDisposedFields() {
+    if ($('select[name="status"]').val() !== 'disposed') {
+        return;
+    }
+
+    ['operational_status', 'condition'].forEach(function (name) {
+        const $field = $('select[name="' + name + '"]');
+        if (!$field.length) {
+            return;
+        }
+        $field.val('disposed');
+        refreshSearchable($field);
+    });
+}
 
 function refreshSearchable($el) {
     if (!$el || !$el.length) {
@@ -1487,8 +1502,17 @@ $('#company_id').on('change', function () {
 $(document).ready(function () {
 
     initSearchableSelects();
+    syncDisposedFields();
     rebuildSupplierDatalist();
     rebuildCustodianDatalist();
+
+    $('select[name="status"]').on('change', syncDisposedFields);
+    $('select[name="operational_status"], select[name="condition"]').on('change', function () {
+        if ($('select[name="status"]').val() === 'disposed') {
+            $(this).val('disposed');
+            refreshSearchable($(this));
+        }
+    });
 
     toggleAssetStructure();
     toggleDepreciationFields();

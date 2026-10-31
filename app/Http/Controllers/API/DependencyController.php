@@ -41,6 +41,7 @@ class DependencyController extends Controller
    public function getAssets($id){
 
      $assets = Asset::where('branch_id', $id)
+        ->notDisposed()
         ->select('id', 'asset_name')
         ->orderBy('asset_name')
         ->get();

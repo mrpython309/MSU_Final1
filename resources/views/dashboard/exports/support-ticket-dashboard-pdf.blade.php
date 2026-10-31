@@ -13,7 +13,7 @@
         thead th { background: #f8f9fa; color: #566a7f; font-weight: 600; }
         .text-center { text-align: center; }
         .text-muted { color: #a1acb8; }
-        .page-break { page-break-before: always; }
+        .keep-together { page-break-inside: avoid; }
 
         .report-header { background: #fff; border: 1px solid #e4e6ef; padding: 14px 16px; margin-bottom: 12px; }
         .report-header h1 { font-size: 20px; margin-bottom: 4px; }
@@ -76,60 +76,21 @@
         <div class="card-header"><h2>Support Ticket Summary</h2></div>
         <div class="card-body">
             <table class="summary-row">
-                <!-- Row 1: 4 cards -->
+                @foreach($summaryCardRows as $row)
                 <tr>
+                    @foreach($row as $card)
                     <td>
-                        <div class="stat-card stat-dark">
-                            <div class="stat-label">Total Tickets</div>
-                            <div class="stat-value">{{ $dashboard['total_count'] ?? 0 }}</div>
+                        <div class="stat-card {{ $card['stat_class'] }}">
+                            <div class="stat-label">{{ $card['label'] }}</div>
+                            <div class="stat-value">{{ $card['count'] }}</div>
                         </div>
                     </td>
-                    <td>
-                        <div class="stat-card stat-warning">
-                            <div class="stat-label">Open Tickets</div>
-                            <div class="stat-value">{{ $dashboard['open_count'] ?? 0 }}</div>
-                        </div>
-                    </td>
-                    <td>
-                        <div class="stat-card stat-secondary">
-                            <div class="stat-label">Accepted Tickets</div>
-                            <div class="stat-value">{{ $dashboard['accepted_count'] ?? 0 }}</div>
-                        </div>
-                    </td>
-                    <td>
-                        <div class="stat-card stat-primary">
-                            <div class="stat-label">Work In Progress</div>
-                            <div class="stat-value">{{ $dashboard['wip_count'] ?? 0 }}</div>
-                        </div>
-                    </td>
+                    @endforeach
+                    @for($pad = $row->count(); $pad < 4; $pad++)
+                    <td></td>
+                    @endfor
                 </tr>
-                <!-- Row 2: 4 cards -->
-                <tr>
-                    <td>
-                        <div class="stat-card stat-info">
-                            <div class="stat-label">On Hold Tickets</div>
-                            <div class="stat-value">{{ $dashboard['on_hold_count'] ?? 0 }}</div>
-                        </div>
-                    </td>
-                    <td>
-                        <div class="stat-card stat-success">
-                            <div class="stat-label">Completed Tickets</div>
-                            <div class="stat-value">{{ $dashboard['completed_count'] ?? 0 }}</div>
-                        </div>
-                    </td>
-                    <td>
-                        <div class="stat-card stat-teal">
-                            <div class="stat-label">Closed Tickets</div>
-                            <div class="stat-value">{{ $dashboard['closed_count'] ?? 0 }}</div>
-                        </div>
-                    </td>
-                    <td>
-                        <div class="stat-card stat-danger">
-                            <div class="stat-label">Rejected Tickets</div>
-                            <div class="stat-value">{{ $dashboard['rejected_count'] ?? 0 }}</div>
-                        </div>
-                    </td>
-                </tr>
+                @endforeach
             </table>
         </div>
     </div>
@@ -144,20 +105,18 @@
                             <thead>
                                 <tr>
                                     <th>Priority</th>
-                                    <th class="text-center"><span class="badge badge-open">Open</span></th>
-                                    <th class="text-center"><span class="badge badge-hold">On Hold</span></th>
-                                    <th class="text-center"><span class="badge badge-completed">Completed</span></th>
-                                    <th class="text-center"><span class="badge badge-closed">Closed</span></th>
+                                    @foreach($matrixStatuses as $status)
+                                    <th class="text-center"><span class="badge badge-open">{{ $status['short'] }}</span></th>
+                                    @endforeach
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach (['high' => 'High', 'normal' => 'Medium', 'low' => 'Low'] as $key => $label)
                                 <tr>
                                     <td><strong>{{ $label }}</strong></td>
-                                    <td class="text-center">{{ $dashboard['priorityMatrix'][$key]['open'] ?? 0 }}</td>
-                                    <td class="text-center">{{ $dashboard['priorityMatrix'][$key]['hold'] ?? 0 }}</td>
-                                    <td class="text-center">{{ $dashboard['priorityMatrix'][$key]['completed'] ?? 0 }}</td>
-                                    <td class="text-center">{{ $dashboard['priorityMatrix'][$key]['closed'] ?? 0 }}</td>
+                                    @foreach($matrixStatuses as $status)
+                                    <td class="text-center">{{ $dashboard['priorityMatrix'][$key][$status['slug']] ?? 0 }}</td>
+                                    @endforeach
                                 </tr>
                                 @endforeach
                             </tbody>
@@ -203,31 +162,29 @@
         </tr>
     </table>
 
-    <div class="card page-break">
-        <div class="card-header"><h2>Tickets by Departments</h2></div>
+    <div class="card {{ $divisionsWithTickets->count() <= 8 ? 'keep-together' : '' }}">
+        <div class="card-header"><h2>Tickets by Divisions</h2></div>
         <div class="card-body">
             <table>
                 <thead>
                     <tr>
-                        <th>Department</th>
-                        <th class="text-center"><span class="badge badge-open">Open</span></th>
-                        <th class="text-center"><span class="badge badge-hold">On Hold</span></th>
-                        <th class="text-center"><span class="badge badge-completed">Completed</span></th>
-                        <th class="text-center"><span class="badge badge-closed">Closed</span></th>
+                        <th>Division</th>
+                        @foreach($matrixStatuses as $status)
+                        <th class="text-center"><span class="badge badge-open">{{ $status['short'] }}</span></th>
+                        @endforeach
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse ($departments as $department)
+                    @forelse ($divisionsWithTickets as $division)
                     <tr>
-                        <td><strong>{{ $department->department_name }}</strong></td>
-                        <td class="text-center">{{ $departmentMatrix[$department->id]['open'] ?? 0 }}</td>
-                        <td class="text-center">{{ $departmentMatrix[$department->id]['hold'] ?? 0 }}</td>
-                        <td class="text-center">{{ $departmentMatrix[$department->id]['completed'] ?? 0 }}</td>
-                        <td class="text-center">{{ $departmentMatrix[$department->id]['closed'] ?? 0 }}</td>
+                        <td><strong>{{ $division->division_name }}</strong></td>
+                        @foreach($matrixStatuses as $status)
+                        <td class="text-center">{{ $divisionMatrix[$division->id][$status['slug']] ?? 0 }}</td>
+                        @endforeach
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="5" class="text-center">No Departments Found</td>
+                        <td colspan="{{ $matrixStatuses->count() + 1 }}" class="text-center">No Divisions Found</td>
                     </tr>
                     @endforelse
                 </tbody>
@@ -235,7 +192,7 @@
         </div>
     </div>
 
-    <div class="card page-break">
+    <div class="card {{ $tickets->count() <= 12 ? 'keep-together' : '' }}">
         <div class="card-header"><h2>Recent Support Tickets</h2></div>
         <div class="card-body">
             <p class="text-muted" style="margin-bottom:10px;">{{ $totalTickets }} total tickets</p>
@@ -247,19 +204,19 @@
                         <th>Priority</th>
                         <th>Status</th>
                         <th>Branch</th>
-                        <th>Department</th>
+                        <th>Division</th>
                         <th>Due</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($tickets as $ticket)
                     <tr>
-                        <td>#{{ $ticket->id }}</td>
+                        <td>{{ $ticket->displayTicketNumber() }}</td>
                         <td>{{ Str::limit($ticket->subject, 50) }}</td>
                         <td>{{ ucfirst($ticket->priority ?? '-') }}</td>
-                        <td>{{ ucfirst(str_replace('_', ' ', $ticket->status ?? '-')) }}</td>
+                        <td>{{ \App\Models\SupportTicketProgressStatus::plain($ticket->status) }}</td>
                         <td>{{ $ticket->branch?->name ?? '-' }}</td>
-                        <td>{{ $ticket->department?->department_name ?? '-' }}</td>
+                        <td>{{ $ticket->division?->division_name ?? '-' }}</td>
                         <td>{{ optional($ticket->due_date)->format('d M Y') ?? '-' }}</td>
                     </tr>
                     @empty

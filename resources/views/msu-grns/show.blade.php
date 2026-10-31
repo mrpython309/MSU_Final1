@@ -77,9 +77,12 @@
                 <strong>--</strong>
                 @endif
             </div>
+            <div class="col-md-3 mb-3"><small class="text-muted d-block">Company</small><strong>{{ $grn->branch?->company?->name ?? $grn->purchaseOrder?->branch?->company?->name ?? '--' }}</strong></div>
             <div class="col-md-3 mb-3"><small class="text-muted d-block">Branch</small><strong>{{ $grn->branch ? (($grn->branch->code ? $grn->branch->code.' - ' : '').$grn->branch->name) : ($grn->purchaseOrder?->branch?->name ?? '--') }}</strong></div>
             <div class="col-md-3 mb-3"><small class="text-muted d-block">PO Number</small><strong>{{ $grn->purchaseOrder?->po_number ?? '--' }}</strong></div>
+            <div class="col-md-3 mb-3"><small class="text-muted d-block">PO Date</small><strong>{{ $grn->purchaseOrder?->po_date?->format('d-m-Y') ?? '--' }}</strong></div>
             <div class="col-md-3 mb-3"><small class="text-muted d-block">Vendor</small><strong>{{ $grn->vendor?->name ?? '--' }}</strong></div>
+            <div class="col-md-3 mb-3"><small class="text-muted d-block">Vendor GST</small><strong>{{ $grn->vendor?->gst_number ?: '--' }}</strong></div>
             <div class="col-md-3 mb-3"><small class="text-muted d-block">Department</small><strong>{{ $grn->department?->department_name ?? '--' }}</strong></div>
             <div class="col-md-3 mb-3"><small class="text-muted d-block">Employee</small><strong>{{ $grn->employeeMaster?->employee_name ?? '--' }}</strong></div>
             <div class="col-md-3 mb-3"><small class="text-muted d-block">Vendor Invoice Number</small><strong>{{ $grn->vendor_invoice_number ?: '--' }}</strong></div>
@@ -111,7 +114,10 @@
                     <th>#</th>
                     <th>Item Code</th>
                     <th>Item Name</th>
+                    <th>Product Category</th>
+                    <th>Sub Category</th>
                     <th>HSN</th>
+                    <th>Unit</th>
                     <th class="text-end">Ordered Qty</th>
                     <th class="text-end">Previously Received</th>
                     <th class="text-end">Received Qty</th>
@@ -149,7 +155,10 @@
                     <td>{{ $loop->iteration }}</td>
                     <td>{{ $item->item_code }}</td>
                     <td>{{ $item->item_name }}</td>
+                    <td>{{ $item->itemMaster?->productCategory?->category_name ?? '--' }}</td>
+                    <td>{{ $item->itemMaster?->productSubCategory?->sub_category_name ?? '--' }}</td>
                     <td>{{ $item->hsn ?: '--' }}</td>
+                    <td>{{ $item->itemMaster?->unit?->unit_name ?? ($item->itemMaster?->uom ?: '--') }}</td>
                     <td class="text-end">{{ number_format((float) $item->ordered_quantity, 3) }}</td>
                     <td class="text-end">{{ number_format((float) $item->previously_received_quantity, 3) }}</td>
                     <td class="text-end">{{ number_format($received, 3) }}</td>
@@ -175,57 +184,120 @@
     </div>
 </div>
 
-<div class="row">
-    <div class="col-md-6 offset-md-6">
-        <div class="card mb-4">
-            <div class="card-header"><h5 class="mb-0">Summary</h5></div>
-            <div class="card-body">
-                @php
-                    $miscCharges = (float) ($grn->miscellaneous_charges ?? 0);
-                    $miscTax = (float) ($grn->miscellaneous_tax ?? 0);
-                    
-                    $totalTaxAmount = $grandTax + $miscTax;
-                    
-                    $sgst = $totalTaxAmount / 2;
-                    $cgst = $totalTaxAmount / 2;
-                    
-                    $finalTotal = $grandGross + $miscCharges + $totalTaxAmount;
-                @endphp
-                <table class="table table-borderless mb-0">
-                    <tr>
-                        <td class="ps-0 py-1"><strong>Total Value (Items)</strong></td>
-                        <td class="text-end pe-0 py-1">{{ number_format($grandGross, 2) }}</td>
-                    </tr>
-                    @if($miscCharges > 0 && $grn->purchaseOrder && $grn->purchaseOrder->charges->count() > 0)
-                          @foreach($grn->purchaseOrder->charges as $charge)
-                          <tr>
-                              <td class="ps-0 py-1"><strong>{{ $charge->charge_name }}</strong></td>
-                              <td class="text-end pe-0 py-1">{{ number_format((float) $charge->amount, 2) }}</td>
-                          </tr>
-                          @endforeach
-                      @elseif($miscCharges > 0 || $miscTax > 0)
-                      <tr>
-                          <td class="ps-0 py-1"><strong>Miscellaneous Charges</strong></td>
-                          <td class="text-end pe-0 py-1">{{ number_format($miscCharges, 2) }}</td>
-                      </tr>
-                      @endif
-                    <tr>
-                        <td class="ps-0 py-1"><strong>Total Miscellaneous Values</strong></td>
-                        <td class="text-end pe-0 py-1">{{ number_format($miscCharges, 2) }}</td>
-                    </tr>
-                    <tr>
-                        <td class="ps-0 py-1"><strong>SGST</strong></td>
-                        <td class="text-end pe-0 py-1">{{ number_format($sgst, 2) }}</td>
-                    </tr>
-                    <tr>
-                        <td class="ps-0 py-1"><strong>CGST</strong></td>
-                        <td class="text-end pe-0 py-1">{{ number_format($cgst, 2) }}</td>
-                    </tr>
+@php
+    $miscCharges = (float) ($grn->miscellaneous_charges ?? 0);
+    $miscTax = (float) ($grn->miscellaneous_tax ?? 0);
+    $poCharges = ($miscCharges > 0 && $grn->purchaseOrder && $grn->purchaseOrder->charges && $grn->purchaseOrder->charges->count() > 0)
+        ? $grn->purchaseOrder->charges
+        : collect();
+    $totalItemValue = $grandGross;
+    $totalItemTax = $grandTax;
+    $totalExcludingTax = $totalItemValue + $miscCharges;
+    $totalTaxAmount = $totalItemTax + $miscTax;
+    $halfTax = round($totalTaxAmount / 2, 2);
+    $finalTotal = $totalExcludingTax + $totalTaxAmount;
 
-                    <tr class="border-top">
-                        <td class="ps-0 py-2"><strong>Grand Total</strong></td>
-                        <td class="text-end pe-0 py-2"><strong>{{ number_format($finalTotal, 2) }}</strong></td>
+    $isInterState = false;
+    $taxBranch = $grn->branch ?? $grn->purchaseOrder?->branch;
+    $taxVendor = $grn->vendor ?? $grn->purchaseOrder?->vendor;
+    if ($taxBranch && $taxVendor) {
+        $branchState = trim(strtolower((string) $taxBranch->state));
+        $vendorState = trim(strtolower((string) $taxVendor->state));
+        if ($branchState === '') $branchState = 'karnataka';
+        if ($vendorState === '') $vendorState = 'karnataka';
+        $isInterState = $branchState !== $vendorState;
+    }
+@endphp
+
+@if($miscCharges > 0)
+<div class="card mb-4">
+    <div class="card-header"><h5 class="mb-0">Miscellaneous Charges</h5></div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead>
+                    <tr>
+                        <th>Charge Type</th>
+                        <th>Charge Amount</th>
+                        <th>Tax %</th>
+                        <th>Tax Amount</th>
+                        <th>Charge Total</th>
                     </tr>
+                </thead>
+                <tbody>
+                    @if($poCharges->count() > 0)
+                        @foreach($poCharges as $charge)
+                            <tr>
+                                <td>{{ $charge->charge_name }}</td>
+                                <td>{{ number_format((float) $charge->amount, 2) }}</td>
+                                <td>{{ number_format((float) $charge->tax_percentage, 2) }}</td>
+                                <td>{{ number_format((float) $charge->tax_amount, 2) }}</td>
+                                <td>{{ number_format((float) $charge->amount + $charge->tax_amount, 2) }}</td>
+                            </tr>
+                        @endforeach
+                    @else
+                        <tr>
+                            <td>Miscellaneous Charges</td>
+                            <td>{{ number_format($miscCharges, 2) }}</td>
+                            <td>--</td>
+                            <td>{{ number_format($miscTax, 2) }}</td>
+                            <td>{{ number_format($miscCharges + $miscTax, 2) }}</td>
+                        </tr>
+                    @endif
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+@endif
+
+<div class="card mb-4">
+    <div class="card-header"><h5 class="mb-0">Overall GRN Values</h5></div>
+    <div class="card-body">
+        <div class="row justify-content-end">
+            <div class="col-md-6 col-lg-5">
+                <table class="table table-bordered border-secondary mb-0">
+                    <tbody>
+                        <tr>
+                            <td>Total Item Value</td>
+                            <td class="text-end"><strong>{{ number_format($totalItemValue, 2) }}</strong></td>
+                        </tr>
+                        <tr>
+                            <td>Total Misc Value</td>
+                            <td class="text-end"><strong>{{ number_format($miscCharges, 2) }}</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Total(Excluding Tax)</strong></td>
+                            <td class="text-end"><strong>{{ number_format($totalExcludingTax, 2) }}</strong></td>
+                        </tr>
+                        <tr>
+                            <td>Total Items Tax Value</td>
+                            <td class="text-end"><strong>{{ number_format($totalItemTax, 2) }}</strong></td>
+                        </tr>
+                        <tr>
+                            <td>Total Misc Tax Value</td>
+                            <td class="text-end"><strong>{{ number_format($miscTax, 2) }}</strong></td>
+                        </tr>
+                        @if($isInterState)
+                            <tr>
+                                <td>IGST</td>
+                                <td class="text-end"><strong>{{ number_format($totalTaxAmount, 2) }}</strong></td>
+                            </tr>
+                        @else
+                            <tr>
+                                <td>SGST</td>
+                                <td class="text-end"><strong>{{ number_format($halfTax, 2) }}</strong></td>
+                            </tr>
+                            <tr>
+                                <td>CGST</td>
+                                <td class="text-end"><strong>{{ number_format(round($totalTaxAmount - $halfTax, 2), 2) }}</strong></td>
+                            </tr>
+                        @endif
+                        <tr>
+                            <td><strong>Total(Including Tax)</strong></td>
+                            <td class="text-end"><strong>{{ number_format($finalTotal, 2) }}</strong></td>
+                        </tr>
+                    </tbody>
                 </table>
             </div>
         </div>

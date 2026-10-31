@@ -933,6 +933,115 @@
         background: linear-gradient(120deg, #6366f1 0%, #8b5cf6 45%, #f59e0b 100%);
     }
 
+    /* Compact Audit History card with light emerald header */
+    .asset-chart-card--audit {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        box-shadow: var(--ad-shadow);
+        border: none;
+    }
+
+    .asset-chart-card--audit .card-header {
+        background: linear-gradient(90deg, rgba(16, 185, 129, 0.12), rgba(5, 150, 105, 0.04)) !important;
+        border-left: 4px solid #10b981 !important;
+        border-bottom: 1px solid rgba(16, 185, 129, 0.08) !important;
+        padding: 1.15rem 1.35rem;
+    }
+
+    .asset-chart-card--audit .card-header .card-title {
+        color: #0f172a !important;
+        font-weight: 700;
+        font-size: 1.05rem;
+        margin: 0;
+    }
+
+    .asset-chart-card--audit .card-header small {
+        color: #64748b !important;
+        font-weight: 500;
+        font-size: 0.75rem;
+        display: block;
+        margin-top: 0.15rem;
+    }
+
+    .asset-chart-card--audit .card-header .asset-panel__header-icon {
+        background: linear-gradient(135deg, #10b981, #059669) !important;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35) !important;
+        border: none !important;
+        color: #fff !important;
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 0.625rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+    }
+
+    .asset-chart-card--audit .card-body {
+        padding: 1rem 1.25rem 1.25rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        flex: 1 1 auto;
+    }
+
+    .asset-chart-card--audit .asset-chart-layout {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+    }
+
+    .asset-chart-card--audit .asset-chart-wrap {
+        flex: 0 0 165px;
+        max-width: 165px;
+        min-height: 165px;
+        max-height: 165px;
+        margin: 0 auto;
+        padding: 0.25rem;
+        background: radial-gradient(circle, rgba(16, 185, 129, 0.08) 0%, transparent 70%);
+    }
+
+    .asset-chart-card--audit .asset-chart-wrap canvas {
+        filter: drop-shadow(0 8px 18px rgba(16, 185, 129, 0.18));
+    }
+
+    .asset-chart-card--audit .asset-chart-legend {
+        flex: 1 1 auto;
+        gap: 0.45rem;
+        margin-top: 0.25rem;
+    }
+
+    .asset-chart-card--audit .asset-chart-legend__item {
+        padding: 0.45rem 0.85rem;
+        border-radius: 0.625rem;
+    }
+
+    .asset-chart-card--audit .asset-chart-legend__label {
+        font-size: 0.8125rem;
+    }
+
+    .asset-chart-card--audit .asset-chart-legend__count {
+        font-size: 0.95rem;
+    }
+
+    .asset-chart-card--audit .asset-chart-footer {
+        margin-top: 0.6rem;
+        padding: 0.55rem 0.85rem;
+        font-size: 0.8125rem;
+        background: linear-gradient(90deg, rgba(16, 185, 129, 0.08), rgba(6, 182, 212, 0.08));
+        color: #475569;
+    }
+
+    .asset-chart-card--audit .asset-chart-footer strong {
+        background: linear-gradient(90deg, #10b981, #06b6d4);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-weight: 800;
+    }
+
     .asset-charts-row .col-lg-6 {
         display: flex;
     }
@@ -1142,58 +1251,55 @@
 <div class="row g-4">
 
 <div class="col-md-6 order-0 mb-4">
-    <div class="card asset-panel asset-panel--types h-100">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <div class="asset-panel__header-left">
-          <span class="asset-panel__header-icon"><i class="icon-base bx bx-category-alt"></i></span>
-          <div>
-            <h5 class="card-title">Asset By Types</h5>
-            <small class="asset-panel__subtitle">Owned and Rent</small>
+        <div class="card asset-chart-card asset-chart-card--audit h-100">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <div>
+            <h5 class="card-title m-0">Audit History</h5>
+            <small>Status breakdown across your portfolio</small>
         </div>
-        </div>
-        <span class="badge asset-panel__count-badge rounded-pill">{{ count($dashboard['asset_types'] ?? []) }} types</span>
+        <span class="asset-panel__header-icon">
+            <i class="icon-base bx bx-check-shield"></i>
+        </span>
       </div>
       <div class="card-body">
-        <ul class="p-0 m-0 asset-type-list">
+
+    <div class="asset-chart-layout">
+        <div class="asset-chart-wrap">
+            <canvas id="assetAuditChart"></canvas>
+        </div>
+
+        <div class="asset-chart-legend" id="assetAuditChartLegend">
             @php
-                $maxTypeCount = collect($dashboard['asset_types'] ?? [])->max('assets_count') ?: 1;
-                $typesTotal = max(1, (int) ($dashboard['total_assets'] ?? 0));
+                $auditChartTotal = max(1, (int) ($dashboard['total_assets'] ?? 0));
+                $auditVibrantColors = ['#10b981', '#f43f5e', '#f59e0b'];
             @endphp
-            @forelse ($dashboard['asset_types'] as $index  => $assetType)
+            @foreach ($assetAuditChartSeries ?? [] as $series)
             @php
-                $typePct = round(($assetType->assets_count / $typesTotal) * 100, 1);
+                $seriesValue = (int) ($series['value'] ?? 0);
+                $seriesPct = round(($seriesValue / $auditChartTotal) * 100, 1);
+                $vColor = $series['color'] ?? $auditVibrantColors[$loop->index % count($auditVibrantColors)];
             @endphp
-             <li class="asset-type-card">
-            <div class="asset-type-card__rank {{ $loop->iteration <= 3 ? 'asset-type-card__rank--top' : '' }}">{{ $loop->iteration }}</div>
-            <div class="asset-type-card__body">
-              <div class="asset-type-card__top">
-                <div class="asset-type-card__name-wrap">
-                  <span class="asset-type-card__icon {{ $colors[$index % count($colors)] }}">
-                    <i class="icon-base bx bx-box"></i>
-                  </span>
-                  <h6 class="asset-type-card__name">{{ $assetType->asset_type_name }}</h6>
+            <div class="asset-chart-legend__item"
+                 data-chart-index="{{ $loop->index }}"
+                 data-chart-target="audit"
+                 style="--legend-color: {{ $vColor }}; --legend-bg: {{ $vColor }}14; --legend-border: {{ $vColor }}33; --legend-shadow: {{ $vColor }}40;">
+                <span class="asset-chart-legend__dot"></span>
+                <span class="asset-chart-legend__label">{{ $series['label'] }}</span>
+                <div class="asset-chart-legend__stats">
+                    <div class="asset-chart-legend__count">{{ number_format($seriesValue) }}</div>
+                    <div class="asset-chart-legend__pct">{{ $seriesPct }}%</div>
+                </div>
             </div>
-                <div class="asset-type-card__stats">
-                  <span class="asset-type-card__count">{{ number_format($assetType->assets_count) }}</span>
-                  <span class="asset-type-card__pct">{{ $typePct }}% of total</span>
-              </div>
-              </div>
-              <div class="asset-type-item__bar">
-                <div class="asset-type-item__bar-fill {{ str_replace('bg-label-', 'bg-', $colors[$index % count($colors)]) }}"
-                     style="width: {{ min(100, ($assetType->assets_count / $maxTypeCount) * 100) }}%;"></div>
-              </div>
-            </div>
-          </li>
-            @empty
-            <li class="asset-empty-state">
-                <div class="asset-empty-state__icon"><i class="icon-base bx bx-box"></i></div>
-                <div class="asset-empty-state__title">No asset types found</div>
-                <p class="asset-empty-state__text">Types will appear once assets are registered</p>
-            </li>
-            @endforelse
-        </ul>
-      </div>
+            @endforeach
+        </div>
     </div>
+
+    <div class="asset-chart-footer">
+        Tracking <strong>{{ number_format($dashboard['total_assets'] ?? 0) }}</strong> assets in total
+    </div>
+
+      </div>
+     </div>
   </div>
 
 
@@ -1570,12 +1676,15 @@
                 gradient.addColorStop(0, gradientStops[0]);
                 gradient.addColorStop(1, gradientStops[1]);
                 canvasCtx.fillStyle = gradient;
-                canvasCtx.font = '800 1.5rem Inter, system-ui, sans-serif';
-                canvasCtx.fillText(centerValue, centerX, centerY - 8);
+                const isCompact = chartArea.width < 185;
+                const valueFontSize = isCompact ? '1.25rem' : '1.5rem';
+                canvasCtx.font = '800 ' + valueFontSize + ' Inter, system-ui, sans-serif';
+                canvasCtx.fillText(centerValue, centerX, centerY - (isCompact ? 6 : 8));
 
                 canvasCtx.fillStyle = '#94a3b8';
-                canvasCtx.font = '600 0.65rem Inter, system-ui, sans-serif';
-                canvasCtx.fillText(centerLabel, centerX, centerY + 16);
+                const labelFontSize = isCompact ? '0.58rem' : '0.65rem';
+                canvasCtx.font = '600 ' + labelFontSize + ' Inter, system-ui, sans-serif';
+                canvasCtx.fillText(centerLabel, centerX, centerY + (isCompact ? 12 : 16));
                 canvasCtx.restore();
             },
         };
@@ -1697,6 +1806,19 @@
         gradientStops: ['#6366f1', '#f59e0b'],
         legendSelector: '#assetValueChartLegend .asset-chart-legend__item[data-chart-target="value"]',
         isCurrency: true,
+    });
+
+    const assetAuditChartSeries = {!! json_encode($assetAuditChartSeries ?? []) !!};
+    const totalAuditAssets = {{ (int) ($dashboard['total_assets'] ?? 0) }};
+
+    initDoughnutChart('assetAuditChart', assetAuditChartSeries, {
+        palette: ['#10b981', '#f43f5e', '#f59e0b'],
+        total: Math.max(1, totalAuditAssets),
+        centerText: totalAuditAssets.toLocaleString(),
+        centerLabel: 'TOTAL ASSETS',
+        gradientStops: ['#10b981', '#06b6d4'],
+        legendSelector: '#assetAuditChartLegend .asset-chart-legend__item[data-chart-target="audit"]',
+        isCurrency: false,
     });
 
     const branchDropdown = document.getElementById('branch_id');

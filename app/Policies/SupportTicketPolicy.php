@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Models\SupportTicket;
+use App\Models\SupportTicketProgressStatus;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
 
@@ -21,25 +22,24 @@ class SupportTicketPolicy
             && ! $ticket->assignments()
                 ->where('is_active', 1)
                 ->exists()
+            && $ticket->division_id
+            && (int) $user->division_id === (int) $ticket->division_id
             && $user->branches()
                 ->where('branches.id', $ticket->branch_id)
-                ->exists()
-            && $user->departments()
-                ->where('departments.id', $ticket->department_id)
                 ->exists();
     }
 
     public function exit(User $user, SupportTicket $ticket): bool
     {
-        return $ticket->isAssignedTo($user)
-            && in_array($ticket->status, [
-                'accepted',
-                'work_in_progress',
-                'hold',
-                'in_purchase',
-                'reopen',
-                'rejected'
-            ]);
+        if (! $ticket->isAssignedTo($user)) {
+            return false;
+        }
+
+        if (in_array($ticket->status, ['accepted', 'reopen', 'rejected'], true)) {
+            return true;
+        }
+
+        return array_key_exists($ticket->status, SupportTicketProgressStatus::map());
     }
 
     public function close(User $user, SupportTicket $ticket): bool

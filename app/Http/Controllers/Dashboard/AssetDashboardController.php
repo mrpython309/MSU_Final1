@@ -103,6 +103,45 @@ class AssetDashboardController extends Controller
             ],
         ]);
 
+        // Audit History breakdown for chart
+        $rawAuditCounts = (clone $assetQuery)
+            ->selectRaw("
+                CASE 
+                    WHEN LOWER(REPLACE(REPLACE(COALESCE(audit_status, ''), '-', '_'), ' ', '_')) IN ('audited', 'found') THEN 'audited'
+                    WHEN LOWER(REPLACE(REPLACE(COALESCE(audit_status, ''), '-', '_'), ' ', '_')) IN ('not_found', 'notfound') THEN 'not_found'
+                    ELSE 'pending'
+                END as normalized_status,
+                COUNT(*) as cnt
+            ")
+            ->groupBy('normalized_status')
+            ->pluck('cnt', 'normalized_status');
+
+        $auditedCount = (int) ($rawAuditCounts['audited'] ?? 0);
+        $notFoundCount = (int) ($rawAuditCounts['not_found'] ?? 0);
+        $pendingAuditCount = (int) ($rawAuditCounts['pending'] ?? 0);
+
+        $dashboard['total_audited_assets'] = $auditedCount;
+        $dashboard['total_not_found_assets'] = $notFoundCount;
+        $dashboard['total_pending_audit_assets'] = $pendingAuditCount;
+
+        $assetAuditChartSeries = [
+            [
+                'label' => 'Audited',
+                'value' => $auditedCount,
+                'color' => '#10b981',
+            ],
+            [
+                'label' => 'Not Found',
+                'value' => $notFoundCount,
+                'color' => '#f43f5e',
+            ],
+            [
+                'label' => 'Pending Audit',
+                'value' => $pendingAuditCount,
+                'color' => '#f59e0b',
+            ],
+        ];
+
         $dashboard['recent_assignments'] = AssetAssignment::with(['asset', 'employee', 'toBranch'])
         ->whereHas('asset', function ($q) use ($assetQuery) {
             $q->whereIn('id', (clone $assetQuery)->pluck('id'));
@@ -175,6 +214,7 @@ class AssetDashboardController extends Controller
             'dashboard',
             'colors',
             'assetOverviewChartSeries',
+            'assetAuditChartSeries',
             'branches'
         ));
     }

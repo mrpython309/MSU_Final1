@@ -27,6 +27,7 @@ class AssetPermissionSeeder extends Seeder
             'brands:view', 'brands:create', 'brands:edit', 'brands:delete',
             'cost-centres:view', 'cost-centres:create', 'cost-centres:edit', 'cost-centres:delete',
             'department:view', 'department:create', 'department:edit', 'department:delete',
+            'division:view', 'division:create', 'division:edit', 'division:delete', 'division:status',
             'designation:view', 'designation:create', 'designation:edit', 'designation:delete',
             'vendor:view', 'vendor:create', 'vendor:edit', 'vendor:delete',
             'asset-master.view', 'asset-master.create', 'asset-master.edit', 'asset-master.delete',
@@ -54,6 +55,7 @@ class AssetPermissionSeeder extends Seeder
             'asset.replacement:view', 'asset.replacement:create', 'asset.replacement:edit', 'asset.replacement:delete',
             'asset.depreciation:view', 
             'dashboard.asset:view',
+            'audit:view', 'audit:create', 'audit:edit', 'audit:delete',
             'indents:view', 'indents:create', 'indents:edit', 'indents:delete', 'indents:approve', 'indents:reject',
             'indent.approve.manager', 'indent.approve.it_head', 'indent.approve.finance',
             'approval-workflows:manage',
@@ -74,14 +76,14 @@ class AssetPermissionSeeder extends Seeder
             'reports.categorywiseassets:view', 
             'reports.typewiseassets:view', 
             'employees:view', 'employees:create', 'employees:edit', 'employees:delete',
+            'support-ticket:view', 'support-ticket:create', 'support-ticket:edit', 'support-ticket:delete',
+            'dashboard.supportticket:view',
         ];
 
         Permission::query()
             ->where('guard_name', $guard)
             ->where(function ($query) {
                 $query->where('name', 'like', 'recurring-tasks.%')
-                    ->orWhere('name', 'like', 'support-ticket:%')
-                    ->orWhere('name', 'dashboard.supportticket:view')
                     ->orWhere('name', 'like', 'reports.%wisesupportticket:view')
                     ->orWhere('name', 'like', 'inventory%');
             })

@@ -90,32 +90,12 @@
         });
 
         var initialMrNumber = @json($materialRequest->mr_number);
-        var initialBranchId = @json((string) $materialRequest->branch_id);
-        var previewMrNumber = @json($previewMrNumber ?? $materialRequest->mr_number);
-        var formCompanyId = @json($formCompanyId ?? session('global_company_id'));
-        var mrCompanyId = @json($mrCompanyId ?? null);
 
         function refreshMrNumberPreview() {
-            var $branch = $('select[name="branch_id"]');
-            var branchId = String($branch.val() || '');
-            var branchCode = $branch.find(':selected').data('code') || 'BRN';
-            var sameCompany = !mrCompanyId || String(formCompanyId || '') === String(mrCompanyId || '');
-
-            if (sameCompany && branchId && branchId === initialBranchId) {
-                $('#mr_number_preview').val(initialMrNumber);
-                return;
-            }
-
-            var preview = previewMrNumber;
-            var parts = preview.split('/');
-            if (parts.length > 2) {
-                parts[1] = branchCode;
-                preview = parts.join('/');
-            }
-            $('#mr_number_preview').val(preview);
+            $('#mr_number_preview').val(initialMrNumber);
         }
 
-        $('select[name="branch_id"]').on('change', function() {
+        $('select[name="branch_id"], input[name="request_date"]').on('change', function() {
             refreshMrNumberPreview();
         });
 

@@ -13,24 +13,17 @@
         <table class="table border-top table-border-bottom-0">
           <thead>
             <tr>
+              <th class="text-truncate">Actions</th>
               <th class="text-truncate">Warranty Type</th>
               <th class="text-truncate">Warranty No</th>
               <th class="text-truncate">Covered Parts</th>
               <th class="text-truncate">Expiry Date</th>
               <th class="text-truncate">Status</th>
-              <th class="text-truncate">Actions</th>
             </tr>
           </thead>
           <tbody>
             @forelse ($asset->warranties as $warrenty)
                 <tr>
-                  <td class="text-truncate">{{ $warrenty->warranty_type->label() ?? '--'}}</td>
-                  <td class="text-truncate">{{ $warrenty->warranty_number ?? '--'}}</td>
-                   <td class="text-truncate">{{ $warrenty->covered_parts ?? '--'}}</td>
-                   <td class="text-truncate">{{ $warrenty->warranty_expire_date?->format('d M Y') ?? '--'}}</td>
-                   <td class="text-truncate">{!! $warrenty->status_label !!} </td>
-                
-              
               <td class="text-truncate">
                 
                 <div class="d-flex align-items-center">
@@ -56,10 +49,15 @@
               </div>
 
               </td>
+                  <td class="text-truncate">{{ $warrenty->warranty_type->label() ?? '--'}}</td>
+                  <td class="text-truncate">{{ $warrenty->warranty_number ?? '--'}}</td>
+                   <td class="text-truncate">{{ $warrenty->covered_parts ?? '--'}}</td>
+                   <td class="text-truncate">{{ $warrenty->warranty_expire_date?->format('d M Y') ?? '--'}}</td>
+                   <td class="text-truncate">{!! $warrenty->status_label !!} </td>
             </tr>
             @empty
              <tr>
-                 <td colspan="4" class="text-center">No Assignments Found</td> 
+                 <td colspan="6" class="text-center">No Assignments Found</td> 
              </tr>
             @endforelse
 

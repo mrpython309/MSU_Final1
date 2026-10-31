@@ -7,6 +7,7 @@ use App\Models\Branch;
 use App\Models\BranchLocation;
 use App\Models\AssetCategory;
 use App\Models\ProductSubCategory;
+use App\AssetStatus;
 use App\Models\Asset;
 use App\Models\AssetType;
 use App\Models\User;
@@ -53,6 +54,7 @@ class AjaxController extends Controller
     public function getAssets($branchId){
 
         $data = Asset::where('branch_id', $branchId)
+            ->notDisposed()
             ->select('id', 'asset_name', 'serial_no', 'asset_code', 'company_id', 'branch_id', 'department_id')
             ->orderBy('asset_name')
             ->get()
@@ -177,6 +179,7 @@ class AjaxController extends Controller
             });
 
         $departmentId = (int) $request->query('department_id', 0);
+        $divisionId = (int) $request->query('division_id', 0);
         $strictDepartment = (int) $request->query('strict_department', 0) === 1;
         if ($strictDepartment && $departmentId <= 0) {
             return response()->json([
@@ -187,6 +190,10 @@ class AjaxController extends Controller
             $users->whereHas('departments', function ($q) use ($departmentId) {
                 $q->where('departments.id', $departmentId);
             });
+        }
+
+        if ($divisionId > 0) {
+            $users->where('division_id', $divisionId);
         }
 
         $users = $users->get();

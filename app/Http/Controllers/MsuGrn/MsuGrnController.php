@@ -208,7 +208,9 @@ class MsuGrnController extends Controller implements HasMiddleware
                             $grn?->grn_number,
                             optional($grn?->grn_date)->format('d-m-Y'),
                             $grn?->purchaseOrder?->po_number,
+                            optional($grn?->purchaseOrder?->po_date)->format('d-m-Y'),
                             $grn?->vendor?->name,
+                            $grn?->vendor?->gst_number,
                             $item->item_code,
                             $item->item_name,
                             $item->itemMaster?->productCategory?->category_name,
@@ -236,7 +238,9 @@ class MsuGrnController extends Controller implements HasMiddleware
                         'GRN Number',
                         'GRN Date',
                         'PO Number',
+                        'PO Date',
                         'Vendor Name',
+                        'Vendor GST',
                         'Item Code',
                         'Item Name',
                         'Product Category',
@@ -504,11 +508,14 @@ class MsuGrnController extends Controller implements HasMiddleware
     {
         $msuGrn->load([
             'vendor',
-            'branch',
+            'branch.company',
             'purchaseOrder.charges',
+            'purchaseOrder.branch.company',
             'department',
             'employeeMaster',
-            'items.itemMaster',
+            'items.itemMaster.productCategory',
+            'items.itemMaster.productSubCategory',
+            'items.itemMaster.unit',
             'items.purchaseOrderItem',
         ]);
 

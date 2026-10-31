@@ -24,7 +24,9 @@
                 <th>GRN Number</th>
                 <th>GRN Date</th>
                 <th>PO Number</th>
+                <th>PO Date</th>
                 <th>Vendor Name</th>
+                <th>Vendor GST</th>
                 <th>Item Code</th>
                 <th>Item Name</th>
                 <th>Product Category</th>
@@ -60,7 +62,9 @@
                 <td>{{ $grn?->grn_number ?? '--' }}</td>
                 <td>{{ $grn?->grn_date?->format('d-m-Y') ?? '--' }}</td>
                 <td>{{ $grn?->purchaseOrder?->po_number ?? '--' }}</td>
+                <td>{{ $grn?->purchaseOrder?->po_date?->format('d-m-Y') ?? '--' }}</td>
                 <td>{{ $grn?->vendor?->name ?? '--' }}</td>
+                <td>{{ $grn?->vendor?->gst_number ?: '--' }}</td>
                 <td>{{ $item->item_code ?: '--' }}</td>
                 <td>{{ $item->item_name ?: '--' }}</td>
                 <td>{{ $item->itemMaster?->productCategory?->category_name ?? '--' }}</td>
@@ -78,7 +82,7 @@
                 <td>{{ $item->expenseTypeLabel() }}</td>
             </tr>
             @empty
-            <tr><td colspan="21">No records found.</td></tr>
+            <tr><td colspan="23">No records found.</td></tr>
             @endforelse
         </tbody>
     </table>

@@ -31,30 +31,12 @@ class SupportTicketStatusLog extends Model
 
     public function getOldStatusLabelAttribute()
     {
-       return match ($this->old_status) {
-            'open' => '<span class="badge bg-label-primary">Open</span>',
-            'accepted' => '<span class="badge bg-label-info">Accepted</span>',
-            'work_in_progress' => '<span class="badge bg-label-warning">Work In Progress</span>',
-            'hold' => '<span class="badge bg-label-secondary">On Hold</span>',
-            'in_purchase' => '<span class="badge bg-label-dark">In Purchase</span>',
-            'completed' => '<span class="badge bg-label-success">Completed</span>',
-            'closed' => '<span class="badge bg-label-danger">Closed</span>',
-            default => '<span class="badge bg-label-light">Unknown</span>',
-        };
+        return SupportTicketProgressStatus::badge($this->old_status);
     }
 
     public function getNewStatusLabelAttribute()
     {
-        return match ($this->new_status) {
-            'open' => '<span class="badge bg-label-primary">Open</span>',
-            'accepted' => '<span class="badge bg-label-info">Accepted</span>',
-            'work_in_progress' => '<span class="badge bg-label-warning">Work In Progress</span>',
-            'hold' => '<span class="badge bg-label-secondary">On Hold</span>',
-            'in_purchase' => '<span class="badge bg-label-dark">In Purchase</span>',
-            'completed' => '<span class="badge bg-label-success">Completed</span>',
-            'closed' => '<span class="badge bg-label-danger">Closed</span>',
-            default => '<span class="badge bg-label-light">Unknown</span>',
-        };
+        return SupportTicketProgressStatus::badge($this->new_status);
     }
 
     /**

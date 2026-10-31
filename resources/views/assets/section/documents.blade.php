@@ -13,40 +13,15 @@
         <table class="table border-top table-border-bottom-0">
           <thead>
             <tr>
+              <th class="text-truncate">Actions</th>
               <th class="text-truncate">Document Title</th>
               <th class="text-truncate">Document File</th>
-              <th class="text-truncate">Created At</th> 
-              <th class="text-truncate">Actions</th>
+              <th class="text-truncate">Created At</th>
             </tr>
           </thead>
           <tbody>
             @forelse ($asset->documents as $document)
                 <tr>
-                <td class="text-truncate">{{ $document->document_name ?? '--'}}</td>
-                <td>
-                    @if ($document->doc_url)
-                        <div class="d-flex align-items-center gap-2">
-                            @if ($document->icon == 'images')
-                                <a href="{{ $document->doc_url }}" data-lightbox="asset-documents-{{ $asset->id }}" data-title="{{ $document->document_name }}">
-                                    <img src="{{ $document->doc_url }}" alt="{{ $document->document_name }}" class="img-fluid rounded" style="max-height: 48px;">
-                                </a>
-                            @else
-                                <a href="{{ $document->doc_url }}" target="_blank" rel="noopener" class="d-inline-flex align-items-center gap-2 text-body">
-                                    <i class="bx {{ $document->fileIconClass() }}" style="font-size: 1.5rem;"></i>
-                                    <span>{{ $document->document_name }}</span>
-                                </a>
-                            @endif
-                            <a href="{{ $document->doc_url }}" download="{{ $document->filename }}" class="btn btn-icon" title="Download">
-                                <i class="icon-base bx bx-download icon-md"></i>
-                            </a>
-                        </div>
-                    @else
-                        --
-                    @endif
-                </td>
-                <td class="text-truncate">{{ $document->created_at?->format('d M Y') ?? '--'}}</td> 
-                
-              
               <td class="text-truncate">
                 
                 <div class="d-flex align-items-center">
@@ -73,6 +48,29 @@
               </div>
 
               </td>
+                <td class="text-truncate">{{ $document->document_name ?? '--'}}</td>
+                <td>
+                    @if ($document->doc_url)
+                        <div class="d-flex align-items-center gap-2">
+                            @if ($document->icon == 'images')
+                                <a href="{{ $document->doc_url }}" data-lightbox="asset-documents-{{ $asset->id }}" data-title="{{ $document->document_name }}">
+                                    <img src="{{ $document->doc_url }}" alt="{{ $document->document_name }}" class="img-fluid rounded" style="max-height: 48px;">
+                                </a>
+                            @else
+                                <a href="{{ $document->doc_url }}" target="_blank" rel="noopener" class="d-inline-flex align-items-center gap-2 text-body">
+                                    <i class="bx {{ $document->fileIconClass() }}" style="font-size: 1.5rem;"></i>
+                                    <span>{{ $document->document_name }}</span>
+                                </a>
+                            @endif
+                            <a href="{{ $document->doc_url }}" download="{{ $document->filename }}" class="btn btn-icon" title="Download">
+                                <i class="icon-base bx bx-download icon-md"></i>
+                            </a>
+                        </div>
+                    @else
+                        --
+                    @endif
+                </td>
+                <td class="text-truncate">{{ $document->created_at?->format('d M Y') ?? '--'}}</td> 
             </tr>
             @empty
              <tr>

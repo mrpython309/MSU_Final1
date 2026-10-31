@@ -145,8 +145,10 @@
                 <thead>
                     <tr>
                         <th>#</th>
+                        <th class="text-center">Actions</th>
                         <th>MR No</th>
                         <th>Request Date</th>
+                        <th>Company</th>
                         <th>Branch</th>
                         <th>Item Code</th>
                         <th>Item Name</th>
@@ -155,7 +157,6 @@
                         <th class="text-end">Issued Qty</th>
                         <th class="text-end">Remaining</th>
                         <th>Status</th>
-                        <th class="text-center">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -163,8 +164,28 @@
                         @php $mr = $item->materialRequest; @endphp
                         <tr>
                             <td>{{ ($items->currentPage() - 1) * $items->perPage() + $loop->iteration }}</td>
+                            <td class="text-center">
+                                @if($mr)
+                                <div class="dropdown">
+                                    <button type="button" class="btn btn-sm btn-icon btn-outline-secondary dropdown-toggle hide-arrow"
+                                            data-bs-toggle="dropdown" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false">
+                                        <i class="bx bx-dots-vertical-rounded"></i>
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        @can('material_requests:view')
+                                        <li>
+                                            <a class="dropdown-item" href="{{ route('material-requests.show', $mr->id) }}">
+                                                <i class="bx bx-show me-1 text-info"></i> View
+                                            </a>
+                                        </li>
+                                        @endcan
+                                    </ul>
+                                </div>
+                                @endif
+                            </td>
                             <td><strong>{{ $mr?->mr_number ?? '--' }}</strong></td>
                             <td>{{ $mr?->request_date ? \Illuminate\Support\Carbon::parse($mr->request_date)->format('d-m-Y') : '--' }}</td>
+                            <td>{{ $mr?->company?->name ?? $mr?->branch?->company?->name ?? 'N/A' }}</td>
                             <td>{{ $mr?->branch?->name ?? 'N/A' }}</td>
                             <td>{{ $item->itemMaster?->item_code ?? '--' }}</td>
                             <td>{{ $item->itemMaster?->item_name ?? '--' }}</td>
@@ -179,29 +200,10 @@
                                     --
                                 @endif
                             </td>
-                            <td class="text-center">
-                                @if($mr)
-                                <div class="dropdown">
-                                    <button type="button" class="btn btn-sm btn-icon btn-outline-secondary dropdown-toggle hide-arrow"
-                                            data-bs-toggle="dropdown" aria-expanded="false">
-                                        <i class="bx bx-dots-vertical-rounded"></i>
-                                    </button>
-                                    <ul class="dropdown-menu dropdown-menu-end">
-                                        @can('material_requests:view')
-                                        <li>
-                                            <a class="dropdown-item" href="{{ route('material-requests.show', $mr->id) }}">
-                                                <i class="bx bx-show me-1 text-info"></i> View
-                                            </a>
-                                        </li>
-                                        @endcan
-                                    </ul>
-                                </div>
-                                @endif
-                            </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="12" class="text-center py-4 text-muted">No material request items found.</td>
+                            <td colspan="13" class="text-center py-4 text-muted">No material request items found.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -218,32 +220,27 @@
                 <thead>
                     <tr>
                         <th>S.No</th>
+                        <th>Actions</th>
                         <th>MR No</th>
                         <th>Requested Date</th>
+                        <th>Company</th>
                         <th>Branch</th>
                         <th>Department</th>
                         <th>Employee</th>
                         <th>Status</th>
-                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse ($requests as $mr)
                     <tr>
                         <td>{{ ($requests->currentPage() - 1) * $requests->perPage() + $loop->iteration }}</td>
-                        <td><strong>{{ $mr->mr_number }}</strong></td>
-                        <td>{{ $mr->request_date ? \Illuminate\Support\Carbon::parse($mr->request_date)->format('d-m-Y') : '--' }}</td>
-                        <td>{{ $mr->branch->name ?? 'N/A' }}</td>
-                        <td>{{ $mr->department->department_name ?? 'N/A' }}</td>
-                        <td>{{ $mr->employee->employee_name ?? 'N/A' }}</td>
-                        <td>@include('material_requests._status-badge', ['status' => $mr->status])</td>
                         <td>
                             <div class="dropdown">
                                 <button type="button" class="btn btn-sm btn-icon btn-outline-secondary dropdown-toggle hide-arrow"
-                                        data-bs-toggle="dropdown" aria-expanded="false">
+                                        data-bs-toggle="dropdown" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false">
                                     <i class="bx bx-dots-vertical-rounded"></i>
                                 </button>
-                                <ul class="dropdown-menu dropdown-menu-end">
+                                <ul class="dropdown-menu">
                                     @can('material_requests:view')
                                     <li>
                                         <a class="dropdown-item" href="{{ route('material-requests.show', $mr->id) }}">
@@ -305,10 +302,17 @@
                                 </ul>
                             </div>
                         </td>
+                        <td><strong>{{ $mr->mr_number }}</strong></td>
+                        <td>{{ $mr->request_date ? \Illuminate\Support\Carbon::parse($mr->request_date)->format('d-m-Y') : '--' }}</td>
+                        <td>{{ $mr->company?->name ?? $mr->branch?->company?->name ?? 'N/A' }}</td>
+                        <td>{{ $mr->branch->name ?? 'N/A' }}</td>
+                        <td>{{ $mr->department->department_name ?? 'N/A' }}</td>
+                        <td>{{ $mr->employee->employee_name ?? 'N/A' }}</td>
+                        <td>@include('material_requests._status-badge', ['status' => $mr->status])</td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="8" class="text-center">No material requests found.</td>
+                        <td colspan="9" class="text-center">No material requests found.</td>
                     </tr>
                     @endforelse
                 </tbody>

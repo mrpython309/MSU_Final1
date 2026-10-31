@@ -5,16 +5,19 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\SupportTicket;
+use App\Models\SupportTicketProgressStatus;
 use App\Models\SupportTicketCommand;
 use App\Traits\ApiResponse;
 use Illuminate\Support\Facades\Gate;
 use App\Models\SupportTicketAssignment;
 use App\Models\SupportTicketActivity;
 use App\Models\User;
+use App\AssetStatus;
 use App\Models\Asset;
 use App\Jobs\SendPushNotification;
 use App\Helpers\Files;
 use App\Services\SupportTicketCompletionFileService;
+use Illuminate\Validation\Rule;
 
 class SupportTicketActionController extends Controller
 {
@@ -354,8 +357,16 @@ class SupportTicketActionController extends Controller
 
     public function updateStatus(Request $request,$id){
 
+        $allowed = SupportTicketProgressStatus::query()
+            ->where('is_active', true)
+            ->pluck('slug')
+            ->push('completed')
+            ->unique()
+            ->values()
+            ->all();
+
         $request->validate([
-            'status' => 'required|in:work_in_progress,hold,in_purchase,completed',
+            'status' => ['required', 'string', Rule::in($allowed)],
         ]);
 
          $ticket=SupportTicket::find($id);
@@ -384,7 +395,8 @@ class SupportTicketActionController extends Controller
 
                 $commandedBy=auth()->user()->name;
 
-                $message = "The status of ticket #{$ticket->id} has been updated to {$request->status}. by {$commandedBy}";
+                $statusLabel = SupportTicketProgressStatus::plain($request->status);
+                $message = "The status of ticket #{$ticket->id} has been updated to {$statusLabel} by {$commandedBy}";
 
                 $data = [
                     'type' => 'support_ticket',
@@ -409,7 +421,7 @@ class SupportTicketActionController extends Controller
             return $this->error('Ticket not found');
         }
 
-        $assignedUsers=SupportTicketAssignment::Where('support_ticket_id', $ticket->id)->Where('is_active', true)->with(['user','user.designation','user.departments'])->get();
+        $assignedUsers=SupportTicketAssignment::Where('support_ticket_id', $ticket->id)->Where('is_active', true)->with(['user','user.division','user.designation','user.departments'])->get();
 
         return $this->success($assignedUsers);
 
@@ -436,7 +448,7 @@ class SupportTicketActionController extends Controller
 
         $asset=Asset::Where('asset_code', 'like', '%'.$id.'%')->first();
 
-        if(!$asset){
+        if(!$asset || $asset->status === AssetStatus::DISPOSED){
 
             return $this->error('Asset not found');
         }
@@ -459,9 +471,9 @@ class SupportTicketActionController extends Controller
 
 
         $users=User::WhereNotIn('id',$assignedUsers)->WhereHas('branches', function ($q) use ($ticket) {
-            $q->where('branch_id', $ticket->branch_id);
-        })->WhereHas('departments', function ($q) use ($ticket) {
-            $q->where('department_id', $ticket->department_id);
+            $q->where('branches.id', $ticket->branch_id);
+        })->when($ticket->division_id, function ($q) use ($ticket) {
+            $q->where('division_id', $ticket->division_id);
         })->get();
 
 

@@ -4,6 +4,7 @@ namespace App\Services\Procurement;
 
 use App\Models\MsuGrn;
 use App\Models\MsuPurchaseOrder;
+use App\Models\SupportTicket;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -475,6 +476,72 @@ class DocumentNumberGenerator
             $this->financialYearCode($woDate),
             $woDate->format('m'),
         ]);
+    }
+
+    /**
+     * Support ticket format: {COMPANY}/{BRANCH}/ST/{FY}/{MM}/{SEQ}
+     * Example: MSULLP/BLR/ST/2627/10/0001
+     * SEQ continues across months for the same company, branch, and FY, and restarts at 0001 on 1 April.
+     */
+    public function nextSupportTicketNumber(string $companyCode, string $branchCode, \DateTimeInterface|string|null $ticketDate = null): string
+    {
+        $prefix = $this->supportTicketPrefix($companyCode, $branchCode, $ticketDate);
+        $padding = (int) config('procurement.document_sequence_padding', 4);
+        $lockName = 'procurement_doc_st_'.md5($this->fyScopePrefix($prefix));
+
+        $generate = function () use ($prefix, $padding, $lockName) {
+            $this->acquireLock($lockName);
+
+            try {
+                $nextSeq = $this->nextSupportTicketSequence($prefix, true);
+                do {
+                    $number = $prefix.'/'.str_pad((string) $nextSeq, $padding, '0', STR_PAD_LEFT);
+                    $nextSeq++;
+                } while (SupportTicket::query()->where('ticket_number', $number)->exists());
+
+                return $number;
+            } finally {
+                $this->releaseLock($lockName);
+            }
+        };
+
+        if (DB::transactionLevel() > 0) {
+            return $generate();
+        }
+
+        return DB::transaction($generate);
+    }
+
+    public function previewSupportTicketNumber(string $companyCode, string $branchCode, \DateTimeInterface|string|null $ticketDate = null): string
+    {
+        $prefix = $this->supportTicketPrefix($companyCode, $branchCode, $ticketDate);
+        $padding = (int) config('procurement.document_sequence_padding', 4);
+        $nextSeq = $this->nextSupportTicketSequence($prefix, false);
+
+        return $prefix.'/'.str_pad((string) $nextSeq, $padding, '0', STR_PAD_LEFT);
+    }
+
+    public function supportTicketPrefix(string $companyCode, string $branchCode, \DateTimeInterface|string|null $ticketDate = null): string
+    {
+        $ticketDate = $ticketDate ? \Carbon\Carbon::parse($ticketDate) : now();
+
+        return implode('/', [
+            $companyCode ?: 'MSULLP',
+            $this->normalizeBranchCode($branchCode),
+            'ST',
+            $this->financialYearCode($ticketDate),
+            $ticketDate->format('m'),
+        ]);
+    }
+
+    private function nextSupportTicketSequence(string $prefix, bool $forUpdate = false): int
+    {
+        $query = SupportTicket::query();
+        if ($forUpdate) {
+            $query->lockForUpdate();
+        }
+
+        return $this->nextFySequence($query, 'ticket_number', $prefix);
     }
 
     public function nextMsuWiNumber(string $companyCode, string $branchCode, \DateTimeInterface|string|null $wiDate = null): string

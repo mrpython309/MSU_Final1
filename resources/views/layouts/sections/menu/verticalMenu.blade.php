@@ -103,6 +103,10 @@
         </li>
       @else
         @php
+          if (! empty($menu->hidden)) {
+              continue;
+          }
+
           $showMenu = false;
 
           if ($menuIsSuperAdmin) {

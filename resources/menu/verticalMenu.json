@@ -38,6 +38,7 @@
     },
     {
       "name": "Asset Reports",
+      "hidden": true,
       "icon": "menu-icon icon-base bx bx-bar-chart-alt-2",
       "slug": [
         "reports/companywiseassets",
@@ -117,6 +118,7 @@
     },
     {
       "name": "Support Ticket Reports",
+      "hidden": true,
       "icon": "menu-icon icon-base bx bx-bar-chart-alt-2",
       "slug": [
         "reports/assetwisesupportticket",
@@ -213,6 +215,7 @@
         "brands",
         "cost-centres",
         "department",
+        "division",
         "designation",
         "vendor",
         "item-masters.index",
@@ -268,6 +271,12 @@
           "name": "Department",
           "slug": "department",
           "icon": "menu-icon icon-base bx bx-group"
+        },
+        {
+          "url": "/division",
+          "name": "Division",
+          "slug": "division",
+          "icon": "menu-icon icon-base bx bx-sitemap"
         },
         {
           "url": "/vendor",
@@ -354,7 +363,8 @@
         "employees",
         "roles",
         "permissions",
-        "branches"
+        "branches",
+        "mobile-permissions"
       ],
       "submenu": [
         {
@@ -371,6 +381,11 @@
           "url": "permissions",
           "name": "Permissions",
           "slug": "permissions"
+        },
+        {
+          "url": "mobile-permissions",
+          "name": "Mobile Permissions",
+          "slug": "mobile-permissions"
         }
       ]
     }

@@ -2,7 +2,7 @@
 
         <div class="card card-action mb-6">
       <div class="card-header align-items-center py-6">
-        <h5 class="card-action-title mb-0">Ticket #{{ $supportTicket->id }}</h5>
+        <h5 class="card-action-title mb-0">Ticket {{ $supportTicket->displayTicketNumber() }}</h5>
         <div class="card-action-element ms-2">
           {!! $supportTicket->status_label !!}
         </div>
@@ -38,8 +38,8 @@
                         </tr>
 
                         <tr>
-                            <td class="fw-semibold">Department</td>
-                            <td>{{ $supportTicket->department->department_name ?? '-' }}</td>
+                            <td class="fw-semibold">Division</td>
+                            <td>{{ $supportTicket->division->division_name ?? '-' }}</td>
                         </tr>
 
                         <tr>

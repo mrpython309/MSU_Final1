@@ -5,12 +5,19 @@
 @section('content')
 @php
     $branch = $msuPurchaseOrder->branch;
+    $vendor = $msuPurchaseOrder->vendor;
     $shipping = $msuPurchaseOrder->shippingDetail;
     $branchAddress = collect([
         $branch?->address,
         $branch?->city,
         $branch?->state,
         $branch?->country,
+    ])->filter()->implode(', ');
+    $vendorAddress = collect([
+        $vendor?->address,
+        $vendor?->city,
+        $vendor?->state,
+        $vendor?->country,
     ])->filter()->implode(', ');
 @endphp
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -57,7 +64,8 @@
             <div class="col-md-3 mb-3"><small class="text-muted d-block">PO Number</small><strong>{{ $msuPurchaseOrder->po_number }}</strong></div>
             <div class="col-md-3 mb-3"><small class="text-muted d-block">PO Date</small><strong>{{ $msuPurchaseOrder->po_date?->format('d-m-Y') }}</strong></div>
             <div class="col-md-6 mb-3"><small class="text-muted d-block">Date of Commencement</small><strong>{{ $msuPurchaseOrder->date_of_commencement?->format('d-m-Y') ?? '--' }}</strong></div>
-            <div class="col-md-3 mb-3"><small class="text-muted d-block">Vendor</small><strong>{{ $msuPurchaseOrder->vendor?->name }}</strong></div>
+            <div class="col-md-3 mb-3"><small class="text-muted d-block">Vendor</small><strong>{{ $vendor?->name ?? '--' }}</strong></div>
+            <div class="col-md-3 mb-3"><small class="text-muted d-block">Vendor GST</small><strong>{{ $vendor?->gst_number ?: '--' }}</strong></div>
             <div class="col-md-3 mb-3"><small class="text-muted d-block">Branch</small><strong>{{ $branch?->name ?? '--' }}</strong></div>
             <div class="col-md-3 mb-3"><small class="text-muted d-block">Employee</small><strong>{{ $msuPurchaseOrder->employeeMaster?->employee_name ?? '--' }}</strong></div>
             <div class="col-md-3 mb-3"><small class="text-muted d-block">Department</small><strong>{{ $msuPurchaseOrder->department?->department_name ?? '--' }}</strong></div>
@@ -96,6 +104,26 @@
             @endif
             <div class="col-md-12 mb-0"><small class="text-muted d-block">Remarks</small><strong>{{ $msuPurchaseOrder->remarks ?: '--' }}</strong></div>
         </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header"><h5 class="mb-0">Vendor GST Details</h5></div>
+    <div class="card-body">
+        @if($vendor)
+        <div class="row">
+            <div class="col-md-4 mb-3"><small class="text-muted d-block">Name</small><strong>{{ $vendor->name }}</strong></div>
+            <div class="col-md-4 mb-3"><small class="text-muted d-block">Code</small><strong>{{ $vendor->company_code ?: '--' }}</strong></div>
+            <div class="col-md-4 mb-3"><small class="text-muted d-block">GST Number</small><strong>{{ $vendor->gst_number ?: '--' }}</strong></div>
+            <div class="col-md-4 mb-3"><small class="text-muted d-block">PAN</small><strong>{{ $vendor->pan_number ?: '--' }}</strong></div>
+            <div class="col-md-4 mb-3"><small class="text-muted d-block">Contact Person</small><strong>{{ $vendor->contact_person ?: '--' }}</strong></div>
+            <div class="col-md-4 mb-3"><small class="text-muted d-block">Phone</small><strong>{{ $vendor->phone_number ?: '--' }}</strong></div>
+            <div class="col-md-4 mb-3"><small class="text-muted d-block">Email</small><strong>{{ $vendor->email ?: '--' }}</strong></div>
+            <div class="col-md-12 mb-0"><small class="text-muted d-block">Address</small><strong>{{ $vendorAddress ?: '--' }}</strong></div>
+        </div>
+        @else
+        <p class="mb-0 text-muted">No vendor selected.</p>
+        @endif
     </div>
 </div>
 
@@ -268,24 +296,24 @@
                             }
                         @endphp
                         <tr>
-                            <td>Total Items Value</td>
+                            <td>Total Item Value</td>
                             <td class="text-end"><strong>{{ number_format($msuPurchaseOrder->total_value, 2) }}</strong></td>
-                        </tr>
-                        <tr>
-                            <td>Total Items Tax Value</td>
-                            <td class="text-end"><strong>{{ number_format($totalItemTax, 2) }}</strong></td>
                         </tr>
                         <tr>
                             <td>Total Misc Value</td>
                             <td class="text-end"><strong>{{ number_format($totalMiscValue, 2) }}</strong></td>
                         </tr>
                         <tr>
-                            <td>Total Misc Tax Value</td>
-                            <td class="text-end"><strong>{{ number_format($totalMiscTax, 2) }}</strong></td>
+                            <td><strong>Total(Excluding Tax)</strong></td>
+                            <td class="text-end"><strong>{{ number_format($totalItemMiscValues, 2) }}</strong></td>
                         </tr>
                         <tr>
-                            <td>Total Item+Misc Values</td>
-                            <td class="text-end"><strong>{{ number_format($totalItemMiscValues, 2) }}</strong></td>
+                            <td>Total Items Tax Value</td>
+                            <td class="text-end"><strong>{{ number_format($totalItemTax, 2) }}</strong></td>
+                        </tr>
+                        <tr>
+                            <td>Total Misc Tax Value</td>
+                            <td class="text-end"><strong>{{ number_format($totalMiscTax, 2) }}</strong></td>
                         </tr>
                         @if($isInterState)
                             <tr>
@@ -303,7 +331,7 @@
                             </tr>
                         @endif
                         <tr>
-                            <td><strong>Grand Total</strong></td>
+                            <td><strong>Total(Including Tax)</strong></td>
                             <td class="text-end"><strong>{{ number_format($dynamicGrandTotal, 2) }}</strong></td>
                         </tr>
                     </tbody>

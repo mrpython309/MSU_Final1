@@ -26,7 +26,7 @@ class SupportTicketsController extends Controller
         $supportTickets=SupportTicket::with([
         'company:id,name',
         'branch:id,name',
-        'department:id,department_name',
+        'division:id,division_name',
         'asset:id,asset_name',
         'creator:id,name'
     ])
@@ -40,8 +40,8 @@ class SupportTicketsController extends Controller
         $q->where('branch_id', $request->branch_id);
     })
 
-    ->when($request->department_id, function ($q) use ($request) {
-        $q->where('department_id', $request->department_id);
+    ->when($request->division_id, function ($q) use ($request) {
+        $q->where('division_id', $request->division_id);
     })
 
     ->when($request->priority, function ($q) use ($request) {
@@ -53,7 +53,11 @@ class SupportTicketsController extends Controller
     })
 
     ->when($request->subject, function ($q) use ($request) {
-        $q->where('subject', 'like', '%' . $request->subject . '%');
+        $like = '%' . $request->subject . '%';
+        $q->where(function ($inner) use ($like) {
+            $inner->where('subject', 'like', $like)
+                ->orWhere('ticket_number', 'like', $like);
+        });
     })
 
     ->when($request->from_date, function ($q) use ($request) {
@@ -109,9 +113,13 @@ class SupportTicketsController extends Controller
 
             $title = "New Support Ticket Created";
 
-            $supDepartment=$supportTicket->department->department_name ?? '';
+            $divisionName = $supportTicket->division->division_name ?? '';
 
-            $message = "A new ticket #{$supportTicket->id} has been submitted under {$supDepartment}. Please review and take action.";
+            $ticketLabel = $supportTicket->displayTicketNumber();
+
+            $message = $divisionName !== ''
+                ? "A new ticket {$ticketLabel} has been submitted under {$divisionName}. Please review and take action."
+                : "A new ticket {$ticketLabel} has been submitted. Please review and take action.";
 
             $data = [
                     'type' => 'support_ticket',
@@ -134,7 +142,7 @@ class SupportTicketsController extends Controller
      */
     public function show(string $id)
     {
-        $supportTicket=SupportTicket::with(['company:id,name','branch:id,name','department:id,department_name','asset:id,asset_name','commands','activities','creator:id,name'])->find($id);
+        $supportTicket=SupportTicket::with(['company:id,name','branch:id,name','division:id,division_name','asset:id,asset_name','commands','activities','creator:id,name'])->find($id);
 
         if(!$supportTicket){
 
@@ -181,7 +189,7 @@ class SupportTicketsController extends Controller
                     'description',
                     'priority',
                     'due_date',
-                    'department_id',
+                    'division_id',
                     'asset_id',
                     'branch_id',
                 ]);

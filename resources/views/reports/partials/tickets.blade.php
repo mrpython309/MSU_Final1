@@ -29,7 +29,7 @@
                         {{ $loop->iteration }}
                     @endif
                 </td>
-                <td>#{{ $ticket->id }}</td>
+                <td class="text-nowrap">{{ $ticket->displayTicketNumber() }}</td>
                 @if(in_array('subject', $tableColumns))
                 <td>
                     <strong>{{ $ticket->subject }}</strong>

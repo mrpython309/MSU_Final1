@@ -146,6 +146,7 @@
                 <thead>
                     <tr>
                         <th>#</th>
+                        <th class="text-center">Actions</th>
                         <th>GRN Number</th>
                         <th>GRN Date</th>
                         <th>PO Number</th>
@@ -155,7 +156,6 @@
                         <th class="text-end">Ordered</th>
                         <th class="text-end">Prev. Received</th>
                         <th class="text-end">Received</th>
-                        <th class="text-center">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -163,23 +163,14 @@
                         @php $grn = $item->grn; @endphp
                         <tr>
                             <td>{{ ($items->currentPage() - 1) * $items->perPage() + $loop->iteration }}</td>
-                            <td><strong>{{ $grn?->grn_number }}</strong></td>
-                            <td>{{ $grn?->grn_date?->format('d-m-Y') }}</td>
-                            <td>{{ $grn?->purchaseOrder?->po_number ?? '--' }}</td>
-                            <td>{{ $grn?->vendor?->name ?? '--' }}</td>
-                            <td>{{ $item->item_code }}</td>
-                            <td>{{ $item->item_name }}</td>
-                            <td class="text-end">{{ number_format((float) $item->ordered_quantity, 3) }}</td>
-                            <td class="text-end">{{ number_format((float) $item->previously_received_quantity, 3) }}</td>
-                            <td class="text-end">{{ number_format((float) $item->received_quantity, 3) }}</td>
                             <td class="text-center">
                                 @if($grn)
                                 <div class="dropdown">
                                     <button type="button" class="btn btn-sm btn-icon btn-outline-secondary dropdown-toggle hide-arrow"
-                                            data-bs-toggle="dropdown" aria-expanded="false">
+                                            data-bs-toggle="dropdown" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false">
                                         <i class="bx bx-dots-vertical-rounded"></i>
                                     </button>
-                                    <ul class="dropdown-menu dropdown-menu-end">
+                                    <ul class="dropdown-menu">
                                         @can('msu-grn:view')
                                         <li>
                                             <a class="dropdown-item" href="{{ route('msu-grns.show', $grn) }}">
@@ -226,6 +217,15 @@
                                 </div>
                                 @endif
                             </td>
+                            <td><strong>{{ $grn?->grn_number }}</strong></td>
+                            <td>{{ $grn?->grn_date?->format('d-m-Y') }}</td>
+                            <td>{{ $grn?->purchaseOrder?->po_number ?? '--' }}</td>
+                            <td>{{ $grn?->vendor?->name ?? '--' }}</td>
+                            <td>{{ $item->item_code }}</td>
+                            <td>{{ $item->item_name }}</td>
+                            <td class="text-end">{{ number_format((float) $item->ordered_quantity, 3) }}</td>
+                            <td class="text-end">{{ number_format((float) $item->previously_received_quantity, 3) }}</td>
+                            <td class="text-end">{{ number_format((float) $item->received_quantity, 3) }}</td>
                         </tr>
                     @empty
                         <tr><td colspan="11" class="text-center py-4 text-muted">No GRN items found.</td></tr>
@@ -242,6 +242,7 @@
                 <thead>
                     <tr>
                         <th>#</th>
+                        <th class="text-center">Actions</th>
                         <th>GRN Number</th>
                         <th>GRN Date</th>
                         <th>PO Number</th>
@@ -252,43 +253,18 @@
                         <th>Status</th>
                         <th>Capex / Opex</th>
                         <th>Asset Status</th>
-                        <th class="text-center">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($grns as $grn)
                     <tr>
                         <td>{{ ($grns->currentPage() - 1) * $grns->perPage() + $loop->iteration }}</td>
-                        <td><strong>{{ $grn->grn_number }}</strong></td>
-                        <td>{{ $grn->grn_date?->format('d-m-Y') }}</td>
-                        <td>{{ $grn->purchaseOrder?->po_number ?? '--' }}</td>
-                        <td>{{ $grn->vendor?->name ?? '--' }}</td>
-                        <td>{{ $grn->department?->department_name ?? '--' }}</td>
-                        <td>{{ $grn->vendor_invoice_number ?: '--' }}</td>
-                        <td class="text-end">{{ $grn->items->count() }}</td>
-                        <td>
-                            <span class="badge bg-label-{{ $grn->statusEnum()->badgeClass() }}">{{ $grn->statusEnum()->label() }}</span>
-                        </td>
-                        <td>
-                            @if($grn->expenseTypeLabel() !== '--')
-                                <span class="badge bg-label-{{ $grn->isCapex() ? 'info' : 'secondary' }}">{{ $grn->expenseTypeLabel() }}</span>
-                            @else
-                                --
-                            @endif
-                        </td>
-                        <td>
-                            @if($grn->isCapex())
-                            <span class="badge bg-label-{{ $grn->assetStatusEnum()->badgeClass() }}">{{ $grn->assetStatusEnum()->label() }}</span>
-                            @else
-                            --
-                            @endif
-                        </td>
                         <td class="text-center">
                             <div class="dropdown">
-                                <button type="button" class="btn btn-sm btn-icon btn-outline-secondary dropdown-toggle hide-arrow" data-bs-toggle="dropdown">
+                                <button type="button" class="btn btn-sm btn-icon btn-outline-secondary dropdown-toggle hide-arrow" data-bs-toggle="dropdown" data-bs-popper-config='{"strategy":"fixed"}'>
                                     <i class="bx bx-dots-vertical-rounded"></i>
                                 </button>
-                                <ul class="dropdown-menu dropdown-menu-end">
+                                <ul class="dropdown-menu">
                                     @can('msu-grn:view')
                                     <li><a class="dropdown-item" href="{{ route('msu-grns.show', $grn) }}"><i class="bx bx-show me-1"></i> View</a></li>
                                     @endcan
@@ -341,6 +317,30 @@
                                     @endcan
                                 </ul>
                             </div>
+                        </td>
+                        <td><strong>{{ $grn->grn_number }}</strong></td>
+                        <td>{{ $grn->grn_date?->format('d-m-Y') }}</td>
+                        <td>{{ $grn->purchaseOrder?->po_number ?? '--' }}</td>
+                        <td>{{ $grn->vendor?->name ?? '--' }}</td>
+                        <td>{{ $grn->department?->department_name ?? '--' }}</td>
+                        <td>{{ $grn->vendor_invoice_number ?: '--' }}</td>
+                        <td class="text-end">{{ $grn->items->count() }}</td>
+                        <td>
+                            <span class="badge bg-label-{{ $grn->statusEnum()->badgeClass() }}">{{ $grn->statusEnum()->label() }}</span>
+                        </td>
+                        <td>
+                            @if($grn->expenseTypeLabel() !== '--')
+                                <span class="badge bg-label-{{ $grn->isCapex() ? 'info' : 'secondary' }}">{{ $grn->expenseTypeLabel() }}</span>
+                            @else
+                                --
+                            @endif
+                        </td>
+                        <td>
+                            @if($grn->isCapex())
+                            <span class="badge bg-label-{{ $grn->assetStatusEnum()->badgeClass() }}">{{ $grn->assetStatusEnum()->label() }}</span>
+                            @else
+                            --
+                            @endif
                         </td>
                     </tr>
                     @empty

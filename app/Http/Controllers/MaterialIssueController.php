@@ -582,7 +582,8 @@ class MaterialIssueController extends Controller implements HasMiddleware
         $materialIssue->load([
             'department',
             'employee',
-            'materialRequest',
+            'materialRequest.company',
+            'materialRequest.branch.company',
             'items.itemMaster',
             'items.materialRequestItem',
             'createdBy',

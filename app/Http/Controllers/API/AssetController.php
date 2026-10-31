@@ -176,7 +176,10 @@ class AssetController extends Controller
             return $this->error('Asset not found');
         }
 
-        $asset->update($request->validated());
+        $data = $request->validated();
+        unset($data['asset_code']);
+
+        $asset->update($data);
 
         return $this->success($asset);
     }
@@ -257,7 +260,15 @@ class AssetController extends Controller
             return $this->error('Audit status must be Audited or Not Found.');
         }
 
-        if (! $asset->recordAudit((int) auth()->id(), $normalized)) {
+                $extraAttributes = [
+            'source' => $request->input('source', 'mobile_app'),
+            'remarks' => $request->input('remarks', $request->input('notes')),
+            'location_status' => $request->input('location_status', 'matches'),
+            'latitude' => $request->input('latitude'),
+            'longitude' => $request->input('longitude'),
+        ];
+
+        if (! $asset->recordAudit((int) auth()->id(), $normalized, $extraAttributes)) {
             return $this->error('Unable to save the audit.');
         }
 
@@ -269,5 +280,38 @@ class AssetController extends Controller
             'audit_on' => $asset->auditOnLabel(),
             'audit_status' => $asset->auditStatusLabel(),
         ], 'Asset audited successfully');
+    }
+
+    /**
+     * Retrieve audit history for an asset.
+     */
+    public function auditHistory(string $id)
+    {
+        $asset = Asset::query()->visibleToUser(auth()->user())->find($id);
+
+        if (! $asset) {
+            return $this->error('Asset not found');
+        }
+
+        $history = $asset->audits()
+            ->with(['auditor:id,name', 'location:id,name', 'branch:id,name', 'company:id,name'])
+            ->get()
+            ->map(function ($audit) {
+                return [
+                    'id' => $audit->id,
+                    'audited_by' => $audit->auditorName(),
+                    'audit_status' => $audit->auditStatusLabel(),
+                    'raw_status' => $audit->audit_status,
+                    'previous_status' => $audit->previous_status,
+                    'location_status' => $audit->location_status,
+                    'remarks' => $audit->remarks,
+                    'audited_at' => $audit->formattedDate(),
+                    'source' => $audit->source,
+                    'location' => $audit->location?->name ?? null,
+                    'branch' => $audit->branch?->name ?? null,
+                ];
+            });
+
+        return $this->success($history, 'Audit history retrieved successfully');
     }
 }

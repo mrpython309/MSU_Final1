@@ -4,6 +4,140 @@
 
 @section('page-style')
 <style>
+  .ticket-thread {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .ticket-post {
+    padding: 1rem 0;
+    border-bottom: 1px solid #eef1f4;
+  }
+  .ticket-post:first-child {
+    padding-top: 0;
+  }
+  .ticket-post:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+  .ticket-post__head {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .ticket-post__avatar {
+    flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #eef2ff;
+    color: #3b4cca;
+    font-weight: 700;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .ticket-post__who {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .ticket-post__name {
+    font-weight: 600;
+    color: #2f3349;
+    line-height: 1.2;
+  }
+  .ticket-post__time {
+    margin-left: auto;
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    color: #8a8d93;
+  }
+  .ticket-post__subject {
+    margin: 0.75rem 0 0.35rem;
+  }
+  .ticket-post__text {
+    margin: 0.65rem 0 0;
+    color: #444050;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .ticket-post__text.is-rejected { color: #d32f2f; }
+  .ticket-post__text.is-exited { color: #b78103; }
+  .ticket-post__images {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+  }
+  .ticket-post__images a {
+    display: block;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #e6e6eb;
+  }
+  .ticket-post__images img {
+    width: 120px;
+    height: 90px;
+    object-fit: cover;
+    display: block;
+  }
+  .ticket-post__files {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+  }
+  .ticket-file {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    max-width: 100%;
+    padding: 0.4rem 0.7rem;
+    border-radius: 8px;
+    background: #f7f7f9;
+    color: #444050;
+    font-size: 0.8125rem;
+    text-decoration: none;
+  }
+  .ticket-file:hover { color: #3b4cca; }
+  .ticket-voice {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+    padding: 0.55rem 0.75rem;
+    border-radius: 10px;
+    background: #f7f7f9;
+  }
+  .ticket-voice__icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #eef2ff;
+    color: #3b4cca;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .ticket-voice audio {
+    width: min(280px, 100%);
+    height: 32px;
+  }
+  .ticket-voice__meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 0;
+  }
+  .ticket-voice__label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #5d596c;
+  }
+
   #recordingControls button {
     min-width: 120px;
 }
@@ -35,10 +169,12 @@
                 <i class="icon-base bx bx-menu icon-md"></i>
             </a>
         </div>
-        <h4 class="mb-0">Support Ticket #{{ $supportTicket->id }}</h4>
+        <h4 class="mb-0">Support Ticket {{ $supportTicket->displayTicketNumber() }}</h4>
     </div>
 
     <div class="d-flex align-items-center gap-3">
+        <a href="{{ route('support-ticket.show', $supportTicket) }}?export_format=excel" class="btn btn-sm btn-success">Excel</a>
+        <a href="{{ route('support-ticket.show', $supportTicket) }}?export_format=pdf" class="btn btn-sm btn-danger">PDF</a>
         <a href="{{ route('support-ticket.index') }}" class="btn btn-secondary">
             <i class="bx bx-arrow-back me-1"></i> Back to List
         </a>
@@ -54,94 +190,89 @@
         <div class="card mb-6">
 
             <div class="card-body">
-
-                <div class="mb-4">                   
-
-                  <x-user-info :user="$supportTicket->creator" />               
-
-              <h5 class="card-title text-primary mb-3">{{ $supportTicket->subject }}</h5>
-
-              <p>{{ $supportTicket->description }}</p>
-
-             <small class="text-body-secondary">{{ $supportTicket->created_at->diffForHumans() }}</small>
-             
-             @if($supportTicket->filename)
-
-                <div class="gap-6 pb-4 pt-4">
-
-             @if($supportTicket->icon == 'images')
-                 <a href="{{ $supportTicket->doc_url }}" data-lightbox="gallery">
-                <img src="{{ $supportTicket->doc_url }}" class="d-block w-px-100 h-px-100 rounded mb-3">
-                 </a>
-             @endif
-
-              <a href="{{ $supportTicket->doc_url }}" download class="btn btn-sm btn-outline-primary">Download Attachment</a>
-             </div> 
-
-
-
-            
-             @endif
-
-                </div>
-
-             @foreach ($supportTicket->commands as $stCommand)
-
-             <hr class="my-3">
-
-              <x-user-info :user="$stCommand->user" />
-              
-              <p class="{{ str_starts_with($stCommand->ticket_response, 'Rejected:') ? 'text-danger' : (str_starts_with($stCommand->ticket_response, 'Exited:') ? 'text-warning' : '') }}">{{ $stCommand->ticket_response }}</p>
-
-              {{-- Voice Note Player --}}
-                @if($stCommand->voice_note)
-                    <div class="mt-4 mb-4">
-                        <div class="d-flex align-items-center mb-2">
-                            <i class="bx bx-microphone me-2 text-primary"></i>
-                            <span class="fw-semibold">Voice Note:</span>
-                            @if($stCommand->recording_duration)
-                                <small class="text-muted ms-2">
-                                    ({{ floor($stCommand->recording_duration / 60) }}:{{ str_pad($stCommand->recording_duration % 60, 2, '0', STR_PAD_LEFT) }})
-                                </small>
-                            @endif
+                <div class="ticket-thread">
+                    <article class="ticket-post">
+                        <div class="ticket-post__head">
+                            <span class="ticket-post__avatar">{{ strtoupper(substr($supportTicket->creator->name ?? 'S', 0, 1)) }}</span>
+                            <div class="ticket-post__who">
+                                <span class="ticket-post__name">{{ $supportTicket->creator->name ?? 'System' }}</span>
+                            </div>
+                            <time class="ticket-post__time" datetime="{{ $supportTicket->created_at?->toIso8601String() }}" title="{{ $supportTicket->created_at?->format('d M Y, h:i A') }}">
+                                {{ $supportTicket->created_at?->diffForHumans() }}
+                            </time>
                         </div>
-                        
-                        <div class="card border">
-                            <div class="card-body p-3">
-                                <audio controls class="w-100" style="max-height: 50px;" controlsList="nodownload">
-                                    <source src="{{ $stCommand->voicenote_url }}" type="audio/webm">
-                                    <source src="{{ $stCommand->voicenote_url }}" type="audio/mpeg">
-                                    <source src="{{ $stCommand->voicenote_url }}" type="audio/wav">
-                                    <source src="{{ $stCommand->voicenote_url }}" type="audio/ogg">
-                                    Your browser does not support the audio element.
-                                </audio>
-                                
-                                {{-- Download link for voice note --}}
-                                <div class="mt-2">
-                                    <a href="{{ $stCommand->voicenote_url }}" 
-                                    download 
-                                    class="btn btn-sm btn-outline-primary">
-                                        <i class="bx bx-download me-1"></i> Download Voice Note
+
+                        <h5 class="card-title text-primary ticket-post__subject">{{ $supportTicket->subject }}</h5>
+                        <p class="ticket-post__text">{{ $supportTicket->description }}</p>
+
+                        @if($supportTicket->filename)
+                            @if($supportTicket->icon == 'images')
+                                <div class="ticket-post__images">
+                                    <a href="{{ $supportTicket->doc_url }}" data-lightbox="ticket-{{ $supportTicket->id }}">
+                                        <img src="{{ $supportTicket->doc_url }}" alt="Ticket attachment">
                                     </a>
                                 </div>
+                            @else
+                                <div class="ticket-post__files">
+                                    <a class="ticket-file" href="{{ $supportTicket->doc_url }}" download>
+                                        <i class="bx bx-file"></i> {{ $supportTicket->filename }}
+                                    </a>
+                                </div>
+                            @endif
+                        @endif
+                    </article>
+
+                    @foreach ($supportTicket->commands as $stCommand)
+                        @php
+                            $replyText = trim((string) ($stCommand->ticket_response ?? ''));
+                            $replyTone = str_starts_with($replyText, 'Rejected:') ? 'is-rejected' : (str_starts_with($replyText, 'Exited:') ? 'is-exited' : '');
+                            $replyName = $stCommand->user->name ?? 'System';
+                            $voiceSeconds = (int) ($stCommand->recording_duration ?? 0);
+                        @endphp
+                        <article class="ticket-post">
+                            <div class="ticket-post__head">
+                                <span class="ticket-post__avatar">{{ strtoupper(substr($replyName, 0, 1)) }}</span>
+                                <div class="ticket-post__who">
+                                    <span class="ticket-post__name">{{ $replyName }}</span>
+                                </div>
+                                <time class="ticket-post__time" datetime="{{ $stCommand->created_at?->toIso8601String() }}" title="{{ $stCommand->created_at?->format('d M Y, h:i A') }}">
+                                    {{ $stCommand->created_at?->diffForHumans() }}
+                                </time>
                             </div>
-                        </div>
-                    </div>
-                @endif
 
-             <small class="text-body-secondary">{{ $stCommand->created_at->diffForHumans() }}</small>
+                            @if($replyText !== '')
+                                <p class="ticket-post__text {{ $replyTone }}">{{ $replyText }}</p>
+                            @endif
 
-             @if($stCommand->attachment_filenames !== [])
+                            @if($stCommand->attachment_filenames !== [])
+                                @include('support-tickets.partials.reply-files')
+                            @endif
 
-              <div class="gap-6 pb-4 pt-4">
-                @include('support-tickets.partials.reply-files')
-              </div>
-
-             @endif
-                 
-             @endforeach
-
-
+                            @if($stCommand->voice_note)
+                                <div class="ticket-voice">
+                                    <span class="ticket-voice__icon"><i class="bx bx-microphone"></i></span>
+                                    <div class="ticket-voice__meta">
+                                        <span class="ticket-voice__label">
+                                            Voice note
+                                            @if($voiceSeconds > 0)
+                                                · {{ floor($voiceSeconds / 60) }}:{{ str_pad($voiceSeconds % 60, 2, '0', STR_PAD_LEFT) }}
+                                            @endif
+                                        </span>
+                                        <audio controls preload="none">
+                                            <source src="{{ $stCommand->voicenote_url }}" type="audio/webm">
+                                            <source src="{{ $stCommand->voicenote_url }}" type="audio/mpeg">
+                                            <source src="{{ $stCommand->voicenote_url }}" type="audio/wav">
+                                            <source src="{{ $stCommand->voicenote_url }}" type="audio/ogg">
+                                        </audio>
+                                    </div>
+                                    <a class="ticket-file" href="{{ $stCommand->voicenote_url }}" download title="Download voice note">
+                                        <i class="bx bx-download"></i>
+                                    </a>
+                                </div>
+                            @endif
+                        </article>
+                    @endforeach
+                </div>
             </div>
 
 
@@ -242,8 +373,7 @@
 
        @endif
 
-
-
+       @include('support-tickets.sections.change-log',['supportTicket'=>$supportTicket])
 
     </div>
 
@@ -324,10 +454,6 @@
         </div>
       </div>
 
-
-       @include('support-tickets.sections.change-log',['supportTicket'=>$supportTicket])
-
-
     </div>
 </div>
 
@@ -404,14 +530,6 @@ const recordingDurationInput = document.getElementById('recordingDurationInput')
 const replyForm = document.getElementById('replyForm');
 
 // ===============================
-// Check Browser Support
-// ===============================
-if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    alert('Voice recording is not supported in your browser.');
-    startBtn.disabled = true;
-}
-
-// ===============================
 // Detect Best Supported Format
 // ===============================
 function detectSupportedMimeType() {
@@ -437,6 +555,11 @@ function detectSupportedMimeType() {
 // Start Recording
 // ===============================
 startBtn.addEventListener('click', async function () {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof MediaRecorder === 'undefined') {
+        alert('Voice recording is not supported in your browser.');
+        return;
+    }
+
     try {
         detectSupportedMimeType();
 

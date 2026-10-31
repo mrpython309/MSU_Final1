@@ -39,6 +39,14 @@ use App\Http\Controllers\API\TicketDashboardController;
 
 
 Route::prefix('v1')->group(function () {
+    Route::get('divisions', function () {
+        return response()->json([
+            'success' => true,
+            'data' => \App\Models\Division::active()->orderBy('division_name')->get()
+        ]);
+    });
+    Route::get('support-tickets/preview-ticket-number', [\App\Http\Controllers\SupportTicket\SupportTicketController::class, 'previewTicketNumber']);
+
 
     Route::post('/login', [LoginController::class, 'login']);
 
@@ -124,6 +132,14 @@ Route::prefix('v1')->group(function () {
         Route::get('assets/nextassetcode',[AssetController::class,'getnextassetcode'])->name('api.assets.getassetcode');
 
         Route::post('assets/{id}/audit', [AssetController::class, 'audit'])->name('api.assets.audit');
+        Route::get('assets/{id}/audits', [AssetController::class, 'auditHistory'])->name('api.assets.audits');
+
+        Route::get('audit/stats', [\App\Http\Controllers\API\AuditApiController::class, 'getStats'])->name('api.audit.stats');
+        Route::get('audit/list', [\App\Http\Controllers\API\AuditApiController::class, 'list'])->name('api.audit.list');
+        Route::get('audit/asset/{id}', [\App\Http\Controllers\API\AuditApiController::class, 'getAssetDetails'])->name('api.audit.asset');
+        Route::get('audit/lookup', [\App\Http\Controllers\API\AuditApiController::class, 'lookup'])->name('api.audit.lookup');
+        Route::post('audit/submit', [\App\Http\Controllers\API\AuditApiController::class, 'submit'])->name('api.audit.submit');
+        Route::get('audit/history/{id}', [\App\Http\Controllers\API\AuditApiController::class, 'getHistory'])->name('api.audit.history');
 
         Route::resource('assets',AssetController::class)->names('api.assets');
 

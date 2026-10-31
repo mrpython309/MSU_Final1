@@ -38,7 +38,7 @@
                     <th>Name</th>
                     <th>Email</th>
                     <th>Mobile Number</th>
-                    <th>Designation</th>
+                    <th>Division</th>
                     <th>Company</th>
                     <th width="150">Actions</th>
                 </tr>
@@ -52,7 +52,7 @@
                         <td>{{ $employee->name }}</td>
                         <td>{{ $employee->email }}</td>                      
                         <td>{{ $employee->mobile_number }}</td>
-                        <td>{{ $employee->designation->designation_name ?? '-' }}</td>
+                        <td>{{ $employee->division->division_name ?? '-' }}</td>
                         <td>{{ $employee->companies->pluck('name')->implode(', ') ?: '-' }}</td>
                         <td>
                             <div class="dropdown">

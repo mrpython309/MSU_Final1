@@ -2,12 +2,17 @@
 
 namespace App\Http\Controllers\SupportTicket;
 
+use App\Exports\SupportTicketDetailExport;
+use App\Exports\SupportTicketListExport;
 use App\Http\Controllers\Controller;
+use App\Services\ReportPdfExportService;
+use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Http\Request;
 use App\Models\SupportTicket;
+use App\Models\SupportTicketProgressStatus;
 use App\Models\User;
 use App\Models\Asset;
-use App\Models\Department;
+use App\Models\Division;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Http\Requests\SupportTicket\SaveSupportTicketRequest;
@@ -23,6 +28,8 @@ use App\Models\Vendor;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Jobs\SendPushNotification;
+use App\Services\Procurement\DocumentNumberGenerator;
+use Illuminate\Validation\Rule;
 
 
 class SupportTicketController extends Controller
@@ -34,7 +41,7 @@ class SupportTicketController extends Controller
     {
         $user = auth()->user();
 
-        $department = Department::visibleToUser($user)->get();
+        $divisions = Division::visibleToUser($user)->orderBy('division_name')->get();
 
         $companies = Company::visibleToUser($user)->active()->get();
 
@@ -60,9 +67,7 @@ class SupportTicketController extends Controller
             ->visibleToUser($user)
             ->orderBy('name')
             ->select('id', 'name')
-            ->when($request->department_id, fn ($q) => $q->whereHas('departments', fn ($d) =>
-                $d->where('departments.id', $request->department_id)
-            ))
+            ->when($request->division_id, fn ($q) => $q->where('division_id', $request->division_id))
             ->when($request->branch_id, fn ($q) => $q->whereHas('branches', fn ($b) =>
                 $b->where('branches.id', $request->branch_id)
             ))
@@ -75,29 +80,62 @@ class SupportTicketController extends Controller
             ->visibleToUser($user)
             ->when($request->company_id, fn ($q) => $q->where('company_id', $request->company_id))
             ->when($request->branch_id, fn ($q) => $q->where('branch_id', $request->branch_id))
-            ->when($request->department_id, fn ($q) => $q->where('department_id', $request->department_id))
+            ->when($request->division_id, fn ($q) => $q->where('division_id', $request->division_id))
             ->when($request->priority, fn ($q) => $q->where('priority', $request->priority))
             ->when($request->status, fn ($q) => $q->where('status', $request->status))
-            ->when($request->subject, fn ($q) => $q->where('subject', 'like', '%'.$request->subject.'%'))
+            ->when($request->subject, fn ($q) => $q->where(function ($inner) use ($request) {
+                $like = '%'.$request->subject.'%';
+                $inner->where('subject', 'like', $like)
+                    ->orWhere('ticket_number', 'like', $like);
+            }))
             ->when($request->from_date, fn ($q) => $q->whereDate('due_date', '>=', $request->from_date))
             ->when($request->to_date, fn ($q) => $q->whereDate('due_date', '<=', $request->to_date))
             ->when($request->created_by, fn ($q) => $q->where('created_by', $request->created_by))
             ->when($request->collaborator_id, fn ($q) => $q->whereHas('assignments', fn ($a) =>
                 $a->where('user_id', $request->collaborator_id)->where('is_active', true)
             ))
-            ->with(['branch', 'department', 'creator', 'activeAssignments.user'])
-            ->latest()
-            ->paginate(50)
-            ->withQueryString();
+            ->with(['branch', 'division', 'creator', 'activeAssignments.user'])
+            ->latest();
+
+        if (in_array($request->input('export_format'), ['excel', 'pdf'], true)) {
+            $exportTickets = $tickets->get();
+            $filename = 'support-tickets-'.now()->format('Y-m-d');
+
+            if ($request->input('export_format') === 'excel') {
+                return Excel::download(new SupportTicketListExport($exportTickets), $filename.'.xlsx');
+            }
+
+            return app(ReportPdfExportService::class)->download(
+                'support-tickets.exports.list-pdf',
+                ['tickets' => $exportTickets, 'skipCompanyHeader' => true],
+                $filename.'.pdf',
+                'landscape'
+            );
+        }
+
+        $tickets = $tickets->paginate($this->ticketPerPage($request))->withQueryString();
 
         return view('support-tickets.index', compact(
             'creatorUsers',
             'collaboratorUsers',
-            'department',
+            'divisions',
             'branches',
             'tickets',
             'companies'
         ));
+    }
+
+    private function ticketPerPage(Request $request): int
+    {
+        $perPage = $request->input('per_page', 50);
+
+        if ($perPage === 'all') {
+            return 1000000;
+        }
+
+        $perPage = (int) $perPage;
+
+        return in_array($perPage, [10, 25, 50, 100], true) ? $perPage : 50;
     }
 
     /**
@@ -107,14 +145,54 @@ class SupportTicketController extends Controller
     {
         $companies=Company::visibleToUser(auth()->user())->active()->get();
 
-        $departments=Department::active()->get();
+        $divisions = Division::active()->orderBy('division_name')->get();
 
         $assets = Asset::VisibleToUser(auth()->user())
+            ->notDisposed()
             ->select('id', 'asset_name', 'serial_no', 'asset_code', 'company_id', 'branch_id', 'department_id')
             ->orderBy('asset_name')
             ->get();
 
-         return view('support-tickets.create',compact('companies','departments','assets'));
+        $previewTicketNumber = $this->previewTicketNumberValue(
+            old('company_id'),
+            old('branch_id')
+        );
+
+         return view('support-tickets.create',compact('companies','divisions','assets','previewTicketNumber'));
+    }
+
+    public function previewTicketNumber(Request $request)
+    {
+        $request->validate([
+            'company_id' => 'nullable|exists:companies,id',
+            'branch_id' => 'nullable|exists:branches,id',
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'ticket_number' => $this->previewTicketNumberValue(
+                $request->input('company_id'),
+                $request->input('branch_id')
+            ),
+        ]);
+    }
+
+    private function previewTicketNumberValue(mixed $companyId, mixed $branchId): string
+    {
+        $companyCode = 'MSULLP';
+        $branchCode = 'BRN';
+
+        if ($branchId) {
+            $branch = Branch::with('company:id,code')->find($branchId);
+            if ($branch) {
+                $branchCode = $branch->code ?: ($branch->name ?: 'BRN');
+                $companyCode = $branch->company?->code ?: $companyCode;
+            }
+        } elseif ($companyId) {
+            $companyCode = Company::query()->whereKey($companyId)->value('code') ?: 'MSULLP';
+        }
+
+        return app(DocumentNumberGenerator::class)->previewSupportTicketNumber($companyCode, $branchCode, now());
     }
 
     /**
@@ -147,9 +225,13 @@ class SupportTicketController extends Controller
 
             $title = "New Support Ticket Created";
 
-            $supDepartment=$supportTicket->department->department_name ?? '';
+            $divisionName = $supportTicket->division->division_name ?? '';
 
-            $message = "A new ticket #{$supportTicket->id} has been submitted under {$supDepartment}. Please review and take action.";
+            $ticketLabel = $supportTicket->displayTicketNumber();
+
+            $message = $divisionName !== ''
+                ? "A new ticket {$ticketLabel} has been submitted under {$divisionName}. Please review and take action."
+                : "A new ticket {$ticketLabel} has been submitted. Please review and take action.";
 
             $data = [
                     'type' => 'support_ticket',
@@ -175,16 +257,42 @@ class SupportTicketController extends Controller
      */
     public function show(SupportTicket $supportTicket)
     {
-        $supportTicket->loadMissing(['branch', 'department', 'company', 'asset', 'creator', 'activeAssignments.user', 'activities.user', 'commands.user', 'vendor']);
+        $supportTicket->loadMissing([
+            'branch',
+            'division',
+            'company',
+            'asset',
+            'creator.designation',
+            'activeAssignments.user.designation',
+            'activities.user.designation',
+            'commands.user.designation',
+            'vendor',
+        ]);
 
-        $branchId=$supportTicket->branch_id;
-        $departmentId=$supportTicket->department_id;
+        if (in_array(request('export_format'), ['excel', 'pdf'], true)) {
+            $filename = 'support-ticket-'.$supportTicket->id.'-'.now()->format('Y-m-d');
+
+            if (request('export_format') === 'excel') {
+                return Excel::download(new SupportTicketDetailExport($supportTicket), $filename.'.xlsx');
+            }
+
+            return app(ReportPdfExportService::class)->download(
+                'support-tickets.exports.detail-pdf',
+                ['supportTicket' => $supportTicket, 'skipCompanyHeader' => true],
+                $filename.'.pdf',
+                'portrait'
+            );
+        }
 
         $asignedIds=$supportTicket->assignments()->select('user_id')->pluck('user_id')->toArray(); 
 
-        $assignAnotherUser=User::WhereNotIn('id', $asignedIds)->WhereHas('branches', function ($q) use ($supportTicket) {
-            $q->where('branch_id', $supportTicket->branch_id);
-        })->whereHas('departments', function ($q) use ($departmentId) { $q->where('departments.id', $departmentId); })->get();
+        $assignAnotherUser=User::whereNotIn('id', $asignedIds)
+            ->where('employee_status', 'active')
+            ->whereHas('branches', function ($q) use ($supportTicket) {
+                $q->where('branches.id', $supportTicket->branch_id);
+            })
+            ->when($supportTicket->division_id, fn ($q) => $q->where('division_id', $supportTicket->division_id))
+            ->get();
 
         $activeAssignments = $supportTicket->activeAssignments()->with('user.designation')
     ->get();
@@ -202,19 +310,33 @@ class SupportTicketController extends Controller
      */
     public function edit(SupportTicket $supportTicket)
     {
-         $supportTicket->loadMissing(['branch', 'department', 'company', 'asset']);
+         $supportTicket->loadMissing(['branch', 'division', 'company', 'asset']);
          $companies=Company::visibleToUser(auth()->user())->active()->get();
 
-        $departments=Department::active()->get();
+        $divisions = Division::query()
+            ->where(function ($query) use ($supportTicket) {
+                $query->where('status', 'active');
+                if ($supportTicket->division_id) {
+                    $query->orWhere('id', $supportTicket->division_id);
+                }
+            })
+            ->orderBy('division_name')
+            ->get();
 
         $branches=Branch::visibleToUser(auth()->user())->Where('id', $supportTicket->branch_id)->active()->get();
 
         $assets = Asset::VisibleToUser(auth()->user())
+            ->where(function ($query) use ($supportTicket) {
+                $query->notDisposed();
+                if ($supportTicket->asset_id) {
+                    $query->orWhere('id', $supportTicket->asset_id);
+                }
+            })
             ->select('id', 'asset_name', 'serial_no', 'asset_code', 'company_id', 'branch_id', 'department_id')
             ->orderBy('asset_name')
             ->get();
 
-        return view('support-tickets.edit',compact('supportTicket','companies','departments','branches','assets'));
+        return view('support-tickets.edit',compact('supportTicket','companies','divisions','branches','assets'));
     }
 
     /**
@@ -268,15 +390,15 @@ class SupportTicketController extends Controller
                 }
 
 
-                if ($field == 'department_id') {
+                if ($field == 'division_id') {
 
-                    $field="Department";
+                    $field="Division";
 
-                    $oldDept = Department::find($oldValue);
-                    $newDept = Department::find($newValue);
+                    $oldDivision = Division::find($oldValue);
+                    $newDivision = Division::find($newValue);
 
-                    $oldValue = $oldDept->department_name ?? null;
-                    $newValue = $newDept->department_name ?? null;
+                    $oldValue = $oldDivision->division_name ?? null;
+                    $newValue = $newDivision->division_name ?? null;
                 }
 
                 if ($field == 'company_id') {
@@ -784,7 +906,11 @@ class SupportTicketController extends Controller
     public function updateStatus(Request $request,SupportTicket $ticket){
 
         $request->validate([
-            'status' => 'required',
+            'status' => [
+                'required',
+                'string',
+                Rule::exists('support_ticket_progress_statuses', 'slug')->where(fn ($query) => $query->where('is_active', true)),
+            ],
         ]);
 
         if(!($ticket->isAssignedTo(auth()->user()))){
@@ -807,7 +933,8 @@ class SupportTicketController extends Controller
 
                 $commandedBy=auth()->user()->name;
 
-                $message = "The status of ticket #{$ticket->id} has been updated to {$request->status}. by {$commandedBy}";
+                $statusLabel = SupportTicketProgressStatus::plain($request->status);
+                $message = "The status of ticket #{$ticket->id} has been updated to {$statusLabel} by {$commandedBy}";
 
                 $data = [
                     'type' => 'support_ticket',

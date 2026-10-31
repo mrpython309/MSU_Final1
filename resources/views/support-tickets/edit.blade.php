@@ -38,7 +38,7 @@
 
 <div class="card">
     <div class="card-header d-flex justify-content-between">
-        <h5 class="mb-0">Edit Ticket #{{ $supportTicket->id }}</h5>
+        <h5 class="mb-0">Edit Ticket {{ $supportTicket->displayTicketNumber() }}</h5>
         <a href="{{ route('support-ticket.index') }}" class="btn btn-secondary">Back to list</a>
     </div>
 
@@ -54,7 +54,12 @@
 
                 <div class="row g-3">
 
-                    <div class="col-md-6">
+                    <div class="col-md-4">
+                        <label class="form-label" for="ticket_number_preview">Ticket ID</label>
+                        <input type="text" id="ticket_number_preview" class="form-control" value="{{ $supportTicket->displayTicketNumber() }}" readonly disabled>
+                    </div>
+
+                    <div class="col-md-4">
                         <label class="form-label">Subject <span class="text-danger">*</span></label>
                         <input type="text" name="subject" required
                             class="form-control @error('subject') is-invalid @enderror"
@@ -62,7 +67,7 @@
                         @error('subject')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label class="form-label">Priority <span class="text-danger">*</span></label>
                         <select name="priority" required
                             class="form-select @error('priority') is-invalid @enderror">
@@ -76,7 +81,7 @@
                         @error('priority')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label class="form-label">Due Date</label>
                         <input type="date" name="due_date"
                             class="form-control @error('due_date') is-invalid @enderror"
@@ -120,18 +125,18 @@
                     </div>
 
                     <div class="col-md-4">
-                        <label class="form-label">Department <span class="text-danger">*</span></label>
-                        <select id="department_id" name="department_id" required
-                            class="form-select @error('department_id') is-invalid @enderror">
-                            <option value="">Select Department</option>
-                            @foreach($departments as $department)
-                                <option value="{{ $department->id }}"
-                                    {{ old('department_id', $supportTicket->department_id) == $department->id ? 'selected' : '' }}>
-                                    {{ $department->department_name }}
+                        <label class="form-label">Division <span class="text-danger">*</span></label>
+                        <select id="division_id" name="division_id" required
+                            class="form-select @error('division_id') is-invalid @enderror">
+                            <option value="">Select Division</option>
+                            @foreach($divisions as $division)
+                                <option value="{{ $division->id }}"
+                                    {{ (string) old('division_id', $supportTicket->division_id) === (string) $division->id ? 'selected' : '' }}>
+                                    {{ $division->division_name }}
                                 </option>
                             @endforeach
                         </select>
-                        @error('department_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        @error('division_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 
                     <div class="col-md-4">
@@ -387,9 +392,7 @@
                     suppressAssetReloadOnBranchChange = true;
                     $('#branch_id').val(String(pb)).trigger('change');
                 }
-                if (pd) {
-                    $('#department_id').val(String(pd)).trigger('change');
-                }
+                pendingDepartmentId = null;
                 pendingBranchId = null;
                 pendingDepartmentId = null;
             } finally {

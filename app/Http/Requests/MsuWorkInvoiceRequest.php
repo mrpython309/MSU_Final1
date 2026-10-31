@@ -22,7 +22,7 @@ class MsuWorkInvoiceRequest extends FormRequest
             'vendor_id' => 'required|exists:vendors,id',
             'branch_id' => 'nullable|exists:branches,id',
             'notes' => 'nullable|string',
-            'document_path' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'document_path' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
 
             // Invoiced items
             'items' => 'required|array|min:1',

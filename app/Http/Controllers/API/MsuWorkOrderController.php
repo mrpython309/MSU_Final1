@@ -144,20 +144,8 @@ class MsuWorkOrderController extends Controller
 
         DB::transaction(function () use ($request, $msuWorkOrder) {
             $validated = $request->validated();
-            
-            $woNumber = $msuWorkOrder->wo_number;
-            if ($msuWorkOrder->branch_id != ($validated['branch_id'] ?? null) || $msuWorkOrder->wo_date->format('Y-m-d') !== \Carbon\Carbon::parse($validated['wo_date'])->format('Y-m-d')) {
-                $numberGenerator = app(\App\Services\Procurement\DocumentNumberGenerator::class);
-                $branch = \App\Models\Branch::with('company')->find($validated['branch_id']);
-                if ($branch) {
-                    $branchCode = $branch->code ?: $branch->name;
-                    $companyCode = $branch->company?->code ?: 'MSULLP';
-                    $woNumber = $numberGenerator->nextMsuWoNumber($companyCode, $branchCode, $validated['wo_date']);
-                }
-            }
 
             $msuWorkOrder->update([
-                'wo_number' => $woNumber,
                 'wo_date' => $validated['wo_date'],
                 'contract_period_from' => $validated['contract_period_from'] ?? null,
                 'contract_period_to' => $validated['contract_period_to'] ?? null,

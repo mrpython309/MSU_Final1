@@ -67,6 +67,7 @@
                 <thead>
                     <tr>
                         <th>S.No</th>
+                        <th class="text-center">Actions</th>
                         <th>Adjustment Number</th>
                         <th>Item</th>
                         <th>Date</th>
@@ -74,13 +75,29 @@
                         <th>Employee</th>
                         <th>Department</th>
                         <th class="text-end">Adjust Stock (Qty)</th>
-                        <th class="text-center">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="table-border-bottom-0">
                     @forelse($adjustments as $index => $adjustment)
                         <tr>
                             <td>{{ $adjustments->firstItem() + $index }}</td>
+                            <td class="text-center">
+                                <div class="dropdown">
+                                    <button type="button" class="btn btn-sm btn-icon btn-outline-secondary dropdown-toggle hide-arrow"
+                                            data-bs-toggle="dropdown" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false">
+                                        <i class="bx bx-dots-vertical-rounded"></i>
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        @can('stock-adjustments:view')
+                                        <li>
+                                            <a class="dropdown-item" href="{{ route('stock-adjustments.show', $adjustment->id) }}">
+                                                <i class="bx bx-show me-1 text-info"></i> View
+                                            </a>
+                                        </li>
+                                        @endcan
+                                    </ul>
+                                </div>
+                            </td>
                             <td><strong>{{ $adjustment->adjustment_number }}</strong></td>
                             <td>{{ $adjustment->itemMaster?->item_name ?? '--' }}</td>
                             <td>{{ $adjustment->adjustment_date->format('d-m-Y') }}</td>
@@ -95,23 +112,6 @@
                             <td>{{ $adjustment->department?->department_name ?? '--' }}</td>
                             <td class="text-end fw-bold">
                                 {{ number_format($adjustment->quantity, 3) }}
-                            </td>
-                            <td class="text-center">
-                                <div class="dropdown">
-                                    <button type="button" class="btn btn-sm btn-icon btn-outline-secondary dropdown-toggle hide-arrow"
-                                            data-bs-toggle="dropdown" aria-expanded="false">
-                                        <i class="bx bx-dots-vertical-rounded"></i>
-                                    </button>
-                                    <ul class="dropdown-menu dropdown-menu-end">
-                                        @can('stock-adjustments:view')
-                                        <li>
-                                            <a class="dropdown-item" href="{{ route('stock-adjustments.show', $adjustment->id) }}">
-                                                <i class="bx bx-show me-1 text-info"></i> View
-                                            </a>
-                                        </li>
-                                        @endcan
-                                    </ul>
-                                </div>
                             </td>
                         </tr>
                     @empty

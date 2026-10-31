@@ -39,9 +39,10 @@
             <div class="col-md-3"><strong>Date:</strong> {{ $materialRequest->request_date ? \Illuminate\Support\Carbon::parse($materialRequest->request_date)->format('d-m-Y') : '--' }}</div>
             <div class="col-md-3"><strong>Department:</strong> {{ $materialRequest->department->department_name ?? 'N/A' }}</div>
             <div class="col-md-3"><strong>Employee:</strong> {{ $materialRequest->employee->employee_name ?? 'N/A' }}</div>
-            <div class="col-md-3"><strong>Company:</strong> {{ $materialRequest->company->name ?? 'N/A' }}</div>
+            <div class="col-md-3"><strong>Company:</strong> {{ $materialRequest->company?->name ?? $materialRequest->branch?->company?->name ?? 'N/A' }}</div>
         </div>
         <div class="row">
+            <div class="col-md-3"><strong>Branch:</strong> {{ $materialRequest->branch?->name ?? 'N/A' }}</div>
             <div class="col-md-3">
                 <strong>Status:</strong> 
                 @if($materialRequest->status === 'created')

@@ -27,6 +27,7 @@ class User extends Authenticatable
         'mobile_number',
         'email',
         'designation_id',
+        'division_id',
         'is_user',
         'password',
         'role_id',
@@ -78,6 +79,11 @@ class User extends Authenticatable
     public function designation()
     {
         return $this->belongsTo(Designation::class);
+    }
+
+    public function division()
+    {
+        return $this->belongsTo(Division::class);
     }
 
     public function company()
@@ -186,6 +192,23 @@ class User extends Authenticatable
         return $query
             ->activeAssigneesForBranch($branchId)
             ->employeesOnly();
+    }
+
+    /**
+     * Asset create, edit, or delete. View-only roles stay false so financial
+     * fields, list filters, and exports stay hidden.
+     */
+    public function canManageAssets(): bool
+    {
+        try {
+            if ($this->hasAnyRole(['superadmin', 'Super Admin'])) {
+                return true;
+            }
+        } catch (\Throwable) {
+            // Missing role tables should fall through to the permission check.
+        }
+
+        return $this->canAny(['asset:create', 'asset:edit', 'asset:delete']);
     }
 
     

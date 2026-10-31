@@ -11,8 +11,10 @@ use App\Models\SupportTicketStatusLog;
 use Illuminate\Support\Facades\Log;
 use App\Traits\IconTrait;
 use Illuminate\Support\Facades\Gate;
+use App\AssetStatus;
 use App\Models\AssetMaintenance;
 use App\Jobs\SendPushNotification;
+use App\Services\Procurement\DocumentNumberGenerator;
 
 
 class SupportTicket extends Model
@@ -23,10 +25,17 @@ class SupportTicket extends Model
 
      const FILE_PATH = 'support-docs';
 
+     /** Days a completed ticket waits for reject or close before it closes itself. */
+     public const AUTO_CLOSE_AFTER_DAYS = 3;
+
+     /** Set by the auto-close command so the activity log can explain the close. */
+     public ?string $statusChangeNote = null;
+
     protected $fillable = [
         'subject',
         'company_id',
         'branch_id',
+        'division_id',
         'department_id',
         'priority',
         'due_date',
@@ -44,7 +53,8 @@ class SupportTicket extends Model
         'completed_files',
         'completed_ticket_commands',
         'completed_time',
-        'completed_at'
+        'completed_at',
+        'marked_completed_at',
     ];
 
     protected $casts = [
@@ -52,6 +62,7 @@ class SupportTicket extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'completed_at' => 'datetime',
+        'marked_completed_at' => 'datetime',
         'completed_files' => 'array',
     ];
 
@@ -79,6 +90,10 @@ class SupportTicket extends Model
         static::creating(function ($ticket) {
              if (auth()->check()) {
             $ticket->created_by = Auth::id();
+             }
+
+             if (blank($ticket->ticket_number)) {
+                $ticket->ticket_number = $ticket->generateTicketNumber();
              }
         });
 
@@ -119,6 +134,10 @@ class SupportTicket extends Model
              if (auth()->check()) {
             $ticket->updated_by = Auth::id();
              }
+
+             if ($ticket->isDirty('status') && $ticket->status === 'completed') {
+                $ticket->marked_completed_at = now();
+             }
         });
 
         static::updated(function ($ticket) {
@@ -142,14 +161,20 @@ class SupportTicket extends Model
             $statusLog->changed_by   = $userId;
             $statusLog->save();
 
+            $meta = [
+                'old' => $original['status'],
+                'new' => $changes['status'],
+            ];
+
+            if ($ticket->statusChangeNote) {
+                $meta['note'] = $ticket->statusChangeNote;
+            }
+
             SupportTicketActivity::create([
                 'support_ticket_id' => $ticket->id,
-                'user_id' => auth()->id(),
+                'user_id' => $userId,
                 'event' => 'status_changed',
-                'meta' => [
-                    'old' => $original['status'],
-                    'new' => $changes['status'],
-                ],
+                'meta' => $meta,
             ]);
 
         }
@@ -191,6 +216,10 @@ class SupportTicket extends Model
 
                         if (!$hasActiveMaintenance) {
                             Asset::where('id', $assetId)
+                                ->where(function ($query) {
+                                    $query->whereNull('status')
+                                        ->orWhere('status', '!=', AssetStatus::DISPOSED->value);
+                                })
                                 ->update(['operational_status' => 'working']);
                         }
                     }
@@ -240,6 +269,33 @@ class SupportTicket extends Model
     |--------------------------------------------------------------------------
     */
 
+    public function displayTicketNumber(): string
+    {
+        $number = trim((string) $this->ticket_number);
+
+        return $number !== '' ? $number : '#'.$this->id;
+    }
+
+    public function generateTicketNumber(?\DateTimeInterface $date = null): string
+    {
+        $branch = $this->branch_id
+            ? Branch::with('company:id,code')->find($this->branch_id)
+            : null;
+
+        $companyCode = $branch?->company?->code;
+        if (! $companyCode && $this->company_id) {
+            $companyCode = Company::query()->whereKey($this->company_id)->value('code');
+        }
+
+        $branchCode = $branch?->code ?: ($branch?->name ?: 'BRN');
+
+        return app(DocumentNumberGenerator::class)->nextSupportTicketNumber(
+            $companyCode ?: 'MSULLP',
+            $branchCode,
+            $date ?? $this->created_at ?? now()
+        );
+    }
+
     public function company()
     {
         return $this->belongsTo(Company::class);
@@ -253,6 +309,11 @@ class SupportTicket extends Model
     public function department()
     {
         return $this->belongsTo(Department::class);
+    }
+
+    public function division()
+    {
+        return $this->belongsTo(Division::class);
     }
 
     public function asset()
@@ -283,18 +344,7 @@ class SupportTicket extends Model
 
     public function getStatusLabelAttribute()
     {
-        return match ($this->status) {
-            'open' => '<span class="badge bg-label-primary">Open</span>',
-            'accepted' => '<span class="badge bg-label-info">Accepted</span>',
-            'work_in_progress' => '<span class="badge bg-label-warning">Work In Progress</span>',
-            'hold' => '<span class="badge bg-label-secondary">On Hold</span>',
-            'in_purchase' => '<span class="badge bg-label-dark">In Purchase</span>',
-            'completed' => '<span class="badge bg-label-success">Completed</span>',
-            'closed' => '<span class="badge bg-label-danger">Closed</span>',
-            'reopen'=> '<span class="badge bg-label-danger">Reopen</span>',
-            'rejected' => '<span class="badge bg-label-danger">Rejected</span>',
-            default => '<span class="badge bg-label-light">Unknown</span>',
-        };
+        return SupportTicketProgressStatus::badge($this->status);
     }
 
     public function getPriorityLabelAttribute()
@@ -359,10 +409,8 @@ class SupportTicket extends Model
         return $user->branches()
                 ->where('branches.id', $this->branch_id)
                 ->exists()
-            &&
-            $user->departments()
-                ->where('departments.id', $this->department_id)
-                ->exists();
+            && $this->division_id
+            && (int) $user->division_id === (int) $this->division_id;
     }
 
     public function isAssignedTo(User $user): bool
@@ -384,31 +432,27 @@ class SupportTicket extends Model
             return $query;
         }
 
-        $branchIds     = $user->branches()->pluck('branches.id');
-        $departmentIds = $user->departments()->pluck('departments.id');
+        $branchIds = $user->branches()->pluck('branches.id');
+        $divisionId = $user->division_id;
 
-        // DEPARTMENT HEAD → Branch + Department based tickets (All Statuses)
-        if ($user->is_department_head) {
-            return $query->where(function ($q) use ($user, $branchIds, $departmentIds) {
-                $q->where(function ($sub) use ($branchIds, $departmentIds) {
+        // Division head (department-head flag) sees every status in their branch and division.
+        if ($user->is_department_head && $divisionId) {
+            return $query->where(function ($q) use ($user, $branchIds, $divisionId) {
+                $q->where(function ($sub) use ($branchIds, $divisionId) {
                     $sub->whereIn('branch_id', $branchIds)
-                        ->whereIn('department_id', $departmentIds);
+                        ->where('division_id', $divisionId);
                 })
                 ->orWhere('created_by', $user->id);
             });
         }
 
-        // NORMAL USER → Visibility rules
-        return $query->where(function ($q) use ($user, $branchIds, $departmentIds) {
-            // 1. Tickets they created
+        return $query->where(function ($q) use ($user, $branchIds, $divisionId) {
             $q->where('created_by', $user->id)
-            // 2. Open tickets in their branch AND department
-              ->orWhere(function ($sub) use ($branchIds, $departmentIds) {
+              ->orWhere(function ($sub) use ($branchIds, $divisionId) {
                   $sub->where('status', 'open')
                       ->whereIn('branch_id', $branchIds)
-                      ->whereIn('department_id', $departmentIds);
+                      ->where('division_id', $divisionId ?: 0);
               })
-            // 3. Tickets they are assigned to
               ->orWhereHas('assignments', function ($a) use ($user) {
                   $a->where('user_id', $user->id);
               });
@@ -531,13 +575,16 @@ class SupportTicket extends Model
 
     public function getDepartmentAllUsers()
     {
+            if (! $this->division_id) {
+                return collect();
+            }
+
             $tokens = DeviceToken::join('users', 'users.id', '=', 'device_tokens.user_id')
                     ->join('company_user', 'users.id', '=', 'company_user.user_id')
                     ->join('branch_user', 'users.id', '=', 'branch_user.user_id')
-                    ->join('department_user', 'users.id', '=', 'department_user.user_id')
                     ->where('company_user.company_id', $this->company_id)
                     ->where('branch_user.branch_id', $this->branch_id)
-                    ->where('department_user.department_id', $this->department_id)
+                    ->when($this->division_id, fn ($q) => $q->where('users.division_id', $this->division_id))
                     ->where('users.id', '!=', $this->created_by)
                     ->whereNotNull('device_tokens.device_token')
                     ->distinct()

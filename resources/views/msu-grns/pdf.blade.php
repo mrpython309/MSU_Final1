@@ -115,6 +115,46 @@
             padding: 4px 6px;
             min-height: 80px;
         }
+        .bottom-wrap {
+            margin-top: 15px;
+            width: 100%;
+        }
+        .bottom-wrap td { vertical-align: top; }
+        .totals {
+            border: 1px solid #000;
+            width: 100%;
+        }
+        .totals th {
+            border: 1px solid #000;
+            background: #f3f3f3;
+            text-align: center;
+            padding: 4px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+        .totals td {
+            border: 1px solid #000;
+            padding: 4px 6px;
+            font-size: 10px;
+        }
+        .totals .label { text-align: left; }
+        .totals .value { text-align: right; width: 90px; }
+        .totals .grand-label { font-weight: bold; }
+        .misc-charges {
+            margin-top: 10px;
+        }
+        .misc-charges th {
+            font-weight: bold;
+        }
+        .misc-charges .label { white-space: nowrap; }
+        .misc-charges .value { width: auto; white-space: nowrap; padding-left: 16px; }
+        .in-words {
+            border: 1px solid #000;
+            border-top: none;
+            padding: 4px 6px;
+            font-size: 9px;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -310,10 +350,44 @@
 </table>
 
 @if(!isset($isExcel) || !$isExcel)
+@php
+    $miscCharges = (float) ($grn->miscellaneous_charges ?? 0);
+    $miscTax = (float) ($grn->miscellaneous_tax ?? 0);
+    $miscChargeLines = collect();
+    if ($miscCharges > 0 && $po && $po->charges && $po->charges->count() > 0) {
+        $miscChargeLines = $po->charges->map(fn ($c) => [
+            'name' => $c->charge_name,
+            'amount' => (float) $c->amount,
+        ]);
+    } elseif ($miscCharges > 0) {
+        $miscChargeLines = collect([[
+            'name' => 'Miscellaneous Charges',
+            'amount' => $miscCharges,
+        ]]);
+    }
+
+    $totalItemValue = $grandGross;
+    $totalItemTax = $grandTax;
+    $totalExcludingTax = $totalItemValue + $miscCharges;
+    $totalTaxAmount = $totalItemTax + $miscTax;
+    $halfTax = round($totalTaxAmount / 2, 2);
+    $finalTotal = $totalExcludingTax + $totalTaxAmount;
+
+    $isInterState = false;
+    $taxBranch = $branch ?? $grn->branch;
+    $taxVendor = $vendor;
+    if ($taxBranch && $taxVendor) {
+        $branchState = trim(strtolower((string) $taxBranch->state));
+        $vendorState = trim(strtolower((string) $taxVendor->state));
+        if ($branchState === '') $branchState = 'karnataka';
+        if ($vendorState === '') $vendorState = 'karnataka';
+        $isInterState = $branchState !== $vendorState;
+    }
+@endphp
 <div style="page-break-inside: avoid;">
 <table class="bottom-wrap">
     <tr>
-        <td style="width:60%; padding-right: 10px;">
+        <td style="width:48%; padding-right: 10px;">
             <div class="section-label" style="font-size: 11px;">Other Terms & Conditions</div>
             <div style="margin-top: 4px;">
                 <strong>Payment Terms And Condition:</strong><br>
@@ -324,61 +398,72 @@
                 <div class="remarks-title">Remarks</div>
                 <div>{{ $grn->remarks ?: '--' }}</div>
             </div>
-        </td>
-        <td style="width:40%;">
-            @php
-                $miscCharges = (float) ($grn->miscellaneous_charges ?? 0);
-                $miscTax = (float) ($grn->miscellaneous_tax ?? 0);
-                
-                $totalTaxAmount = $grandTax + $miscTax;
-                
-                $sgst = $totalTaxAmount / 2;
-                $cgst = $totalTaxAmount / 2;
-                
-                $finalTotal = $grandGross + $miscCharges + $totalTaxAmount;
-            @endphp
-            <table style="border: 1px solid #000;">
+            @if($miscChargeLines->isNotEmpty())
+            <table class="totals misc-charges">
                 <tr>
-                    <td style="padding: 4px; border-bottom: 1px solid #ccc; font-weight: bold; width: 60%">Total Value (Items)</td>
-                    <td style="padding: 4px; border-bottom: 1px solid #ccc; text-align: right; width: 40%">{{ number_format($grandGross, 2) }}</td>
+                    <th colspan="2"><strong>Total Miscellaneous Charges</strong></th>
                 </tr>
-                @if($miscCharges > 0 && $grn->purchaseOrder && $grn->purchaseOrder->charges->count() > 0)
-                    @foreach($grn->purchaseOrder->charges as $charge)
+                @foreach($miscChargeLines as $chargeLine)
                     <tr>
-                        <td style="padding: 4px; border-bottom: 1px solid #ccc; font-weight: bold;">{{ $charge->charge_name }}</td>
-                        <td style="padding: 4px; border-bottom: 1px solid #ccc; text-align: right;">{{ number_format((float) $charge->amount, 2) }}</td>
+                        <td class="label">{{ $chargeLine['name'] }}</td>
+                        <td class="value">{{ number_format($chargeLine['amount'], 2) }}</td>
                     </tr>
-                    @endforeach
-                @elseif($miscCharges > 0 || $miscTax > 0)
+                @endforeach
                 <tr>
-                    <td style="padding: 4px; border-bottom: 1px solid #ccc; font-weight: bold;">Miscellaneous Charges</td>
-                    <td style="padding: 4px; border-bottom: 1px solid #ccc; text-align: right;">{{ number_format($miscCharges, 2) }}</td>
-                </tr>
-                @endif
-                <tr>
-                    <td style="padding: 4px; border-bottom: 1px solid #ccc; font-weight: bold;">Total Miscellaneous Values</td>
-                    <td style="padding: 4px; border-bottom: 1px solid #ccc; text-align: right;">{{ number_format($miscCharges, 2) }}</td>
-                </tr>
-                <tr>
-                    <td style="padding: 4px; border-bottom: 1px solid #ccc; font-weight: bold;">SGST</td>
-                    <td style="padding: 4px; border-bottom: 1px solid #ccc; text-align: right;">{{ number_format($sgst, 2) }}</td>
-                </tr>
-                <tr>
-                    <td style="padding: 4px; border-bottom: 1px solid #ccc; font-weight: bold;">CGST</td>
-                    <td style="padding: 4px; border-bottom: 1px solid #ccc; text-align: right;">{{ number_format($cgst, 2) }}</td>
-                </tr>
-
-                <tr>
-                    <td style="padding: 4px; border-bottom: 1px solid #ccc; font-weight: bold; font-size: 11px;">Grand Total</td>
-                    <td style="padding: 4px; border-bottom: 1px solid #ccc; text-align: right; font-weight: bold; font-size: 11px;">{{ number_format($finalTotal, 2) }}</td>
-                </tr>
-                <tr>
-                    <td colspan="2" style="padding: 4px;">
-                        <span style="font-weight: bold;">In Words:</span><br>
-                        {{ \App\Support\AmountInWords::indianRupees((float)$finalTotal) }}
-                    </td>
+                    <td class="label">Total Misc Value</td>
+                    <td class="value">{{ number_format($miscCharges, 2) }}</td>
                 </tr>
             </table>
+            @endif
+        </td>
+        <td style="width:52%;">
+            <table class="totals">
+                <tr>
+                    <th colspan="2">Total GRN Values</th>
+                </tr>
+                <tr>
+                    <td class="label">Total Item Value</td>
+                    <td class="value">{{ number_format($totalItemValue, 2) }}</td>
+                </tr>
+                <tr>
+                    <td class="label">Total Misc Value</td>
+                    <td class="value">{{ number_format($miscCharges, 2) }}</td>
+                </tr>
+                <tr>
+                    <td class="label grand-label"><strong>Total(Excluding Tax)</strong></td>
+                    <td class="value"><strong>{{ number_format($totalExcludingTax, 2) }}</strong></td>
+                </tr>
+                <tr>
+                    <td class="label">Total Items Tax Value</td>
+                    <td class="value">{{ number_format($totalItemTax, 2) }}</td>
+                </tr>
+                <tr>
+                    <td class="label">Total Misc Tax Value</td>
+                    <td class="value">{{ number_format($miscTax, 2) }}</td>
+                </tr>
+                @if($isInterState)
+                    <tr>
+                        <td class="label">IGST</td>
+                        <td class="value">{{ number_format($totalTaxAmount, 2) }}</td>
+                    </tr>
+                @else
+                    <tr>
+                        <td class="label">SGST</td>
+                        <td class="value">{{ number_format($halfTax, 2) }}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">CGST</td>
+                        <td class="value">{{ number_format(round($totalTaxAmount - $halfTax, 2), 2) }}</td>
+                    </tr>
+                @endif
+                <tr>
+                    <td class="label grand-label"><strong>Total(Including Tax)</strong></td>
+                    <td class="value"><strong>{{ number_format($finalTotal, 2) }}</strong></td>
+                </tr>
+            </table>
+            <div class="in-words">
+                <strong>In Words:</strong> {{ \App\Support\AmountInWords::indianRupees((float) $finalTotal) }}
+            </div>
         </td>
     </tr>
 </table>

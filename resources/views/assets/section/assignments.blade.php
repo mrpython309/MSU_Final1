@@ -15,19 +15,82 @@
         <table class="table border-top table-border-bottom-0">
           <thead>
             <tr>
+              <th class="text-truncate">Actions</th>
               <th>Logs</th>
               <th class="text-truncate">Assigned Date</th>
               <th class="text-truncate">From </th>
               <th class="text-truncate">To</th>
+              @if (auth()->user()?->canManageAssets())
               <th class="text-truncate">Asset Custodian</th>
+              @endif
               <th class="text-truncate">Status</th>
               <th class="text-truncate">Transfer Status</th>
-              <th class="text-truncate">Actions</th>
             </tr>
           </thead>
           <tbody>
             @forelse ($assignments as $assignment)
              <tr>
+              <td class="text-truncate">
+
+                <div class="d-flex align-items-center gap-4">
+                 
+                    @if($assignment->canModify())
+
+                    @can('asset.assignment:edit')
+
+                    <a class="btn btn-sm btn-icon edit-record" href="{{ asset_section_action_url('asset.assignment.edit', $assignment, 'assignments') }}"><i class="icon-base bx bx-edit icon-22px"></i></a>
+                    
+                    @endcan 
+
+                    {{-- @can('asset.assignment:delete')
+                    <form method="POST"
+                                              action="{{ route('asset.assignment.destroy', $assignment) }}"
+                                              class="delete-form">
+                                              @csrf
+                                              @method('DELETE')
+                      <button class="btn btn-sm btn-icon delete-record" data-id="416"><i class="icon-base bx bx-trash icon-22px"></i></button>
+                    </form>
+                    @endcan --}}
+                  @endif
+
+     @if($assignment->can_accept_assignment || $assignment->can_reject_assignment || $assignment->can_return_assignment || $assignment->can_return_accept_assignment)
+
+        <button class="btn btn-sm btn-icon dropdown-toggle hide-arrow" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="icon-base bx bx-dots-vertical-rounded icon-22px"></i>
+        </button>
+
+        <div class="dropdown-menu m-0">
+
+            @can('updateStatus', [$assignment, 'accept'])
+            <a href="{{ asset_section_action_url('asset.assignment.accept', $assignment, 'assignments') }}" class="dropdown-item text-success">
+                    <i class="bx bx-check-circle me-1"></i> Accept
+            </a>
+            @endcan
+
+            @can('updateStatus', [$assignment, 'reject'])
+            <a href="{{ asset_section_action_url('asset.assignment.reject', $assignment, 'assignments') }}" class="dropdown-item text-warning">
+                    <i class="bx bx-dislike me-1"></i> Reject
+            </a>
+            @endcan
+
+            @can('updateStatus', [$assignment, 'return'])
+            <a href="{{ asset_section_action_url('asset.assignment.return', $assignment, 'assignments') }}" class="dropdown-item text-primary">
+                    <i class="bx bx-undo me-1"></i> Return
+            </a>
+            @endcan
+
+            @can('updateStatus', [$assignment, 'accept_return'])
+            <a href="{{ asset_section_action_url('asset.assignment.return.accept', $assignment, 'assignments') }}" class="dropdown-item text-info">
+                    <i class="bx bx-log-in-circle me-1"></i> Accept Return
+            </a>
+            @endcan
+
+          </div>
+         @endif
+
+                </div>
+
+              </td>
               <td>
                 <button type="button" class="btn btn-icon btn-primary" data-bs-toggle="modal" data-bs-target="#assignmentLogs{{$assignment->id}}">
                   <i class="icon-base bx bx-pie-chart-alt icon-md text-white"></i>
@@ -116,6 +179,7 @@
                
 
               </td>
+              @if (auth()->user()?->canManageAssets())
               <td>
 
                  @php
@@ -143,6 +207,7 @@
             @endif
 
               </td>
+              @endif
             
               <td class="text-truncate">{!! $assignment->status_label !!}</td>
               <td class="text-truncate" align="center">{!! $assignment->transfer_status_label !!}
@@ -151,69 +216,10 @@
 
 
               </td>
-              <td class="text-truncate">
-
-                <div class="d-flex align-items-center gap-4">
-                 
-                    @if($assignment->canModify())
-
-                    @can('asset.assignment:edit')
-
-                    <a class="btn btn-sm btn-icon edit-record" href="{{ asset_section_action_url('asset.assignment.edit', $assignment, 'assignments') }}"><i class="icon-base bx bx-edit icon-22px"></i></a>
-                    
-                    @endcan 
-
-                    {{-- @can('asset.assignment:delete')
-                    <form method="POST"
-                                              action="{{ route('asset.assignment.destroy', $assignment) }}"
-                                              class="delete-form">
-                                              @csrf
-                                              @method('DELETE')
-                      <button class="btn btn-sm btn-icon delete-record" data-id="416"><i class="icon-base bx bx-trash icon-22px"></i></button>
-                    </form>
-                    @endcan --}}
-                  @endif
-
-     @if($assignment->can_accept_assignment || $assignment->can_reject_assignment || $assignment->can_return_assignment || $assignment->can_return_accept_assignment)
-
-        <button class="btn btn-sm btn-icon dropdown-toggle hide-arrow" data-bs-toggle="dropdown" aria-expanded="false">
-            <i class="icon-base bx bx-dots-vertical-rounded icon-22px"></i>
-        </button>
-
-        <div class="dropdown-menu dropdown-menu-end m-0">
-
-            @can('updateStatus', [$assignment, 'accept'])
-            <a href="{{ asset_section_action_url('asset.assignment.accept', $assignment, 'assignments') }}" class="dropdown-item text-success">
-                    <i class="bx bx-check-circle me-1"></i> Accept
-            </a>
-            @endcan
-
-            @can('updateStatus', [$assignment, 'reject'])
-            <a href="{{ asset_section_action_url('asset.assignment.reject', $assignment, 'assignments') }}" class="dropdown-item text-warning">
-                    <i class="bx bx-dislike me-1"></i> Reject
-            </a>
-            @endcan
-
-            @can('updateStatus', [$assignment, 'return'])
-            <a href="{{ asset_section_action_url('asset.assignment.return', $assignment, 'assignments') }}" class="dropdown-item text-primary">
-                    <i class="bx bx-undo me-1"></i> Return
-            </a>
-            @endcan
-
-            @can('updateStatus', [$assignment, 'accept_return'])
-            <a href="{{ asset_section_action_url('asset.assignment.return.accept', $assignment, 'assignments') }}" class="dropdown-item text-info">
-                    <i class="bx bx-log-in-circle me-1"></i> Accept Return
-            </a>
-            @endcan
-
-          </div>
-         @endif
-
-              </td>
             </tr>
             @empty
              <tr>
-                 <td colspan="7" class="text-center">No Assignments Found</td> 
+                 <td colspan="{{ auth()->user()?->canManageAssets() ? 8 : 7 }}" class="text-center">No Assignments Found</td> 
              </tr>
             @endforelse
            

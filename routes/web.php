@@ -1,4 +1,5 @@
 <?php
+use App\Http\Controllers\MobilePermissionController;
 use App\Http\Controllers\AjaxController;
 use App\Http\Controllers\authentications\ForgotPasswordBasic;
 use App\Http\Controllers\authentications\LoginBasic;
@@ -7,6 +8,7 @@ use App\Http\Controllers\Company\CompanyController;
 use App\Http\Controllers\Dashboard\Analytics;
 use App\Http\Controllers\DealerLocation\DealerLocationController;
 use App\Http\Controllers\Department\DepartmentController;
+use App\Http\Controllers\Division\DivisionController;
 use App\Http\Controllers\ProductCategory\ProductCategoryController;
 use App\Http\Controllers\ProductCategory\ProductSubCategoryController;
 use App\Http\Controllers\Unit\UnitController;
@@ -77,6 +79,7 @@ use App\Http\Controllers\VendorQuotationController;
 use App\Http\Controllers\PaymentRequestController;
 use App\Http\Controllers\QualityInspectionController;
 use App\Http\Controllers\SupportTicket\SupportTicketController;
+use App\Http\Controllers\SupportTicket\SupportTicketProgressStatusController;
 use App\Http\Controllers\Dashboard\SupportTicketDashboardController;
 use Illuminate\Support\Facades\Route;
 
@@ -106,8 +109,7 @@ Route::get('/auth/forgot-password-basic', [ForgotPasswordBasic::class, 'index'])
 Route::middleware(['auth'])->group(function () {
     // Dashboard
     Route::get('/', [Analytics::class, 'index'])
-        ->name('dashboard')
-        ->middleware('permission:dashboard:view');
+        ->name('dashboard');
     Route::get('dashboard/export', [Analytics::class, 'export'])
         ->name('dashboard.export')
         ->middleware('permission:dashboard:view');
@@ -183,6 +185,12 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('users/{user}/roles', [UserRoleController::class, 'edit'])->name('users.roles.edit')->middleware('permission:users:edit');
     Route::post('users/{user}/roles', [UserRoleController::class, 'update'])->name('users.roles.update')->middleware('permission:users:edit');
+
+    // ========== MOBILE APP MODULE PERMISSIONS ==========
+    Route::get('mobile-permissions', [MobilePermissionController::class, 'index'])->name('mobile-permissions.index')->middleware('permission:roles:view');
+    Route::post('mobile-permissions/role', [MobilePermissionController::class, 'updateRolePermissions'])->name('mobile-permissions.update-role')->middleware('permission:roles:edit');
+    Route::post('mobile-permissions/user', [MobilePermissionController::class, 'updateUserPermissions'])->name('mobile-permissions.update-user')->middleware('permission:users:edit');
+    Route::post('mobile-permissions/user-reset', [MobilePermissionController::class, 'resetUserPermissions'])->name('mobile-permissions.reset-user')->middleware('permission:users:edit');
 
     // ========== DEALER LOCATION ==========
     Route::prefix('dealer-locations')->name('dealer-locations.')->group(function () {
@@ -309,6 +317,46 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/', [DepartmentController::class, 'updateStatus'])
             ->name('status')
             ->middleware('permission:department:status');;
+    });
+
+    // ========== DIVISION ==========
+    Route::prefix('division')->name('division.')->group(function () {
+
+        Route::get('/', [DivisionController::class, 'index'])
+            ->name('index')
+            ->middleware('permission:division:view');
+
+        Route::get('/export', [DivisionController::class, 'export'])
+            ->name('export')
+            ->middleware('permission:division:view');
+
+        Route::get('/export-pdf', [DivisionController::class, 'exportPdf'])
+            ->name('export-pdf')
+            ->middleware('permission:division:view');
+
+        Route::get('/create', [DivisionController::class, 'create'])
+            ->name('create')
+            ->middleware('permission:division:create');
+
+        Route::post('/', [DivisionController::class, 'store'])
+            ->name('store')
+            ->middleware('permission:division:create');
+
+        Route::get('/{division}/edit', [DivisionController::class, 'edit'])
+            ->name('edit')
+            ->middleware('permission:division:edit');
+
+        Route::put('/{division}', [DivisionController::class, 'update'])
+            ->name('update')
+            ->middleware('permission:division:edit');
+
+        Route::delete('/{division}', [DivisionController::class, 'destroy'])
+            ->name('destroy')
+            ->middleware('permission:division:delete');
+
+        Route::put('/', [DivisionController::class, 'updateStatus'])
+            ->name('status')
+            ->middleware('permission:division:status');
     });
 
     // ========== PRODUCT CATEGORY ==========
@@ -748,7 +796,9 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('dashboard/asset', [AssetDashboardController::class, 'index'])->name('dashboard.asset');
 
-    Route::get('dashboard/supportticket', [SupportTicketDashboardController::class, 'index'])->name('dashboard.supportticket');
+    Route::get('dashboard/supportticket', [SupportTicketDashboardController::class, 'index'])
+        ->name('dashboard.supportticket')
+        ->middleware('permission:dashboard.supportticket:view');
 
     Route::resource('employees', EmployeesController::class)->names('employees');
 
@@ -899,6 +949,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('asset/import', [AssetController::class, 'importAsset'])->name('asset.import.process');
 
     Route::resource('asset', AssetController::class);
+    Route::post('asset/{asset}/audit', [AssetController::class, 'recordAuditWeb'])->name('asset.audit.store');
 
     Route::get('vendor/export', [VendorController::class, 'export'])->name('vendor.export');
     Route::get('vendor/export-pdf', [VendorController::class, 'exportPdf'])->name('vendor.export-pdf');
@@ -1155,6 +1206,7 @@ Route::middleware(['auth'])->group(function () {
     Route::any('reports/departmentwisesupportticket', [ReportsController::class, 'departmentwisesupportticket'])->name('reports.departmentwisesupportticket');
     Route::any('reports/userwisesupportticket', [ReportsController::class, 'userwisesupportTicket'])->name('reports.userwisesupportticket');
 
+    Route::get('support-ticket/preview-ticket-number', [SupportTicketController::class, 'previewTicketNumber'])->name('support-ticket.preview-ticket-number');
     Route::post('support-ticket/reopen/{ticket}', [SupportTicketController::class, 'reopenTicket'])->name('support-ticket.reopenticket');
     Route::post('support-ticket/close/{ticket}', [SupportTicketController::class, 'closeTicket'])->name('support-ticket.closeticket');
     Route::post('support-ticket/reject/{ticket}', [SupportTicketController::class, 'rejectTicket'])->name('support-ticket.rejectticket');
@@ -1164,6 +1216,9 @@ Route::middleware(['auth'])->group(function () {
     Route::put('support-ticket/assign/{ticket}', [SupportTicketController::class, 'assignTicket'])->name('support-ticket.assignticket');
     Route::post('support-ticket/reply/{ticket}', [SupportTicketController::class, 'replyTicket'])->name('support-ticket.replyticket');
     Route::put('support-ticket/update-status/{ticket}', [SupportTicketController::class, 'updateStatus'])->name('support-ticket.status.update');
+    Route::post('support-ticket/progress-statuses', [SupportTicketProgressStatusController::class, 'store'])->name('support-ticket.progress-statuses.store');
+    Route::put('support-ticket/progress-statuses/{progressStatus}', [SupportTicketProgressStatusController::class, 'update'])->name('support-ticket.progress-statuses.update');
+    Route::delete('support-ticket/progress-statuses/{progressStatus}', [SupportTicketProgressStatusController::class, 'destroy'])->name('support-ticket.progress-statuses.destroy');
     Route::resource('support-ticket', SupportTicketController::class)->names('support-ticket');
 });
 

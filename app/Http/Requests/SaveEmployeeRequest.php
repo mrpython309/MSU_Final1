@@ -30,13 +30,13 @@ class SaveEmployeeRequest extends FormRequest
             'name'   => 'required|string|max:255',
 
             'emp_code' => [
-                'required',
+                'nullable',
                 'string',
                 'max:50',
                 Rule::unique('users', 'emp_code')->ignore($employeeId),
             ],
 
-            'date_of_joining'=> 'required|date',
+            'date_of_joining'=> 'nullable|date',
 
             'mobile_number' => [
                 'required',
@@ -50,7 +50,7 @@ class SaveEmployeeRequest extends FormRequest
                 Rule::unique('users', 'email')->ignore($employeeId),
             ],
 
-            'designation_id' => 'required|exists:designations,id',
+            'division_id' => ['nullable', 'exists:divisions,id'],
             'is_department_head'=>'nullable',
 
             /* ============ USER ACCOUNT ============ */
@@ -74,13 +74,30 @@ class SaveEmployeeRequest extends FormRequest
             'branch_id'        => ['required', 'array', 'min:1'],
             'branch_id.*'      => ['exists:branches,id'],
 
-            'department_id'    => ['required', 'array', 'min:1'],
+            'department_id'    => ['nullable', 'array'],
             'department_id.*'  => ['exists:departments,id'],
 
             /* ============ STATUS ============ */
 
             'employee_status' => 'required|in:active,inactive',
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $departments = $this->input('department_id', []);
+        if (! is_array($departments)) {
+            $departments = [];
+        }
+
+        $this->merge([
+            'division_id' => ($this->input('division_id') === '' || $this->input('division_id') === null)
+                ? null
+                : $this->input('division_id'),
+            'emp_code' => $this->filled('emp_code') ? $this->input('emp_code') : null,
+            'date_of_joining' => $this->filled('date_of_joining') ? $this->input('date_of_joining') : null,
+            'department_id' => array_values(array_filter($departments, fn ($id) => $id !== null && $id !== '')),
+        ]);
     }
 
     public function messages(): array

@@ -3,6 +3,9 @@
 @section('title', 'Asset Details')
 
 @section('content')
+@php
+  $canManageAssets = auth()->user()?->canManageAssets() ?? false;
+@endphp
 <style>
   [id$="-section"] {
     scroll-margin-top: 5.5rem;
@@ -13,7 +16,7 @@
     <h4 class="mb-1">Asset Details</h4>
   </div>
   <div class="d-flex flex-wrap gap-2 justify-content-center justify-content-sm-end">
-    @can('asset:view')
+    @if ($canManageAssets)
     <a href="{{ route('asset.detail-export', $asset) }}" class="btn btn-outline-success btn-sm">
       <i class="bx bx-export me-1"></i> Excel
     </a>
@@ -23,7 +26,7 @@
     <a href="{{ route('asset.handover-export-pdf', $asset) }}" class="btn btn-outline-danger btn-sm">
       <i class="bx bxs-file-pdf me-1"></i> Asset Handover
     </a>
-    @endcan
+    @endif
     <a href="{{ route('asset.index') }}" class="btn btn-secondary btn-sm">Back to list</a>
   </div>
 </div>
@@ -308,6 +311,7 @@
             </div>
           </div>
 
+          @if ($canManageAssets)
           {{-- Purchase Cost --}}
           <div class="col-md-3">
             <div class="d-flex align-items-center mb-4">
@@ -339,6 +343,7 @@
               </div>
             </div>
           </div>
+          @endif
 
           @php
             $grn = $asset->grnItem?->grn;
@@ -521,6 +526,7 @@
             </div>
           </div>
 
+          @if ($canManageAssets)
           <div class="col-md-3">
             <div class="d-flex align-items-center mb-4">
               <div class="avatar flex-shrink-0 me-3">
@@ -532,6 +538,7 @@
               </div>
             </div>
           </div>
+          @endif
 
           @if (! ($grn || $po || $indent))
           <div class="col-md-3">
@@ -581,6 +588,7 @@
           </div>
           @endif
 
+          @if ($canManageAssets)
           {{-- Current Value: reducing balance on invoice amount, or invoice amount when there is no depreciation --}}
           <div class="col-md-3">
             <div class="d-flex align-items-center mb-4">
@@ -595,6 +603,7 @@
               </div>
             </div>
           </div>
+          @endif
 
           {{-- Audit --}}
           <div class="col-md-3">
@@ -705,6 +714,11 @@
           <a class="nav-link @if($tab == 'replacements') active @endif" href="{{ route('asset.show', ['asset' => $asset->id, 'tab' => 'replacements']) }}#replacements-section"><i class="icon-base bx bx-receipt icon-18px me-1_5"></i> Replacement</a>
         </li>
         @endcan
+        @canany(['asset.audit:view', 'asset:view'])
+        <li class="nav-item">
+          <a class="nav-link @if($tab == 'audits') active @endif" href="{{ route('asset.show', ['asset' => $asset->id, 'tab' => 'audits']) }}#audits-section"><i class="icon-base bx bx-check-shield icon-18px me-1_5"></i> Audit History</a>
+        </li>
+        @endcanany
       </ul>
     </div>
     <!--/ Customer Pills -->

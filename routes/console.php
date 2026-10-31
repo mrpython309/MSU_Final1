@@ -12,3 +12,4 @@ Artisan::command('inspire', function () {
 
 Schedule::command('stock:carry-forward-daily')->dailyAt('00:00');
 Schedule::command('work-orders:generate-recurring')->dailyAt('00:10');
+Schedule::command('support-tickets:auto-close-completed')->hourly();

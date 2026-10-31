@@ -407,7 +407,7 @@ class MaterialRequestController extends Controller implements HasMiddleware
 
     public function show(MaterialRequest $materialRequest)
     {
-        $materialRequest->load(['department', 'employee', 'branch', 'company', 'createdBy', 'items.itemMaster', 'items.unit']);
+        $materialRequest->load(['department', 'employee', 'branch.company', 'company', 'createdBy', 'items.itemMaster', 'items.unit']);
         return view('material_requests.show', compact('materialRequest'));
     }
 
@@ -452,10 +452,7 @@ class MaterialRequestController extends Controller implements HasMiddleware
         $formCompanyId = $companyId;
 
         $mrCompanyId = $materialRequest->company_id ?? $materialRequest->branch?->company_id;
-        $displayMrNumber = ((string) $companyId === (string) $mrCompanyId
-            && (string) $selectedBranchId === (string) $materialRequest->branch_id)
-            ? $materialRequest->mr_number
-            : $previewMrNumber;
+        $displayMrNumber = $materialRequest->mr_number;
 
         return view('material_requests.edit', compact(
             'materialRequest',
@@ -500,21 +497,8 @@ class MaterialRequestController extends Controller implements HasMiddleware
 
         DB::transaction(function () use ($request, $status, $materialRequest) {
             $branch = \App\Models\Branch::with('company')->find($request->branch_id);
-            $mrNumber = $materialRequest->mr_number;
-            $originalDate = $materialRequest->request_date
-                ? \Carbon\Carbon::parse($materialRequest->request_date)->format('Y-m-d')
-                : null;
-            $newDate = \Carbon\Carbon::parse($request->request_date)->format('Y-m-d');
-
-            if ((string) $materialRequest->branch_id !== (string) $request->branch_id || $originalDate !== $newDate) {
-                $branchCode = $branch ? ($branch->code ?: $branch->name) : 'BRN';
-                $companyCode = $branch?->company?->code ?: 'MSULLP';
-                $mrNumber = app(\App\Services\Procurement\DocumentNumberGenerator::class)
-                    ->nextMrNumber($companyCode, $branchCode, $request->request_date);
-            }
 
             $materialRequest->update([
-                'mr_number' => $mrNumber,
                 'request_date' => $request->request_date,
                 'department_id' => $request->department_id,
                 'employee_master_id' => $request->employee_master_id,

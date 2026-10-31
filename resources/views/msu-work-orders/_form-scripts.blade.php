@@ -15,11 +15,8 @@
         var previewWoNumberUrl = @json(route('msu-work-orders.preview-wo-number'));
         var formCompanyId = @json($formCompanyId ?? session('global_company_id'));
         var defaultCompanyCode = @json($companyCode ?? 'MSULLP');
-        var woCompanyId = @json($woCompanyId ?? null);
         var isEditWO = @json(isset($msuWorkOrder));
         var csrfToken = @json(csrf_token());
-        var initialBranchId = @json(isset($msuWorkOrder) ? (string) $msuWorkOrder->branch_id : '');
-        var initialWoDate = @json(isset($msuWorkOrder) && $msuWorkOrder->wo_date ? $msuWorkOrder->wo_date->format('Y-m-d') : '');
         var initialWoNumber = @json(isset($msuWorkOrder) ? $msuWorkOrder->wo_number : '');
         var woPreviewRequest = null;
         var woPreviewToken = 0;
@@ -263,9 +260,8 @@
         function refreshWoNumberPreview() {
             var branchId = String($('#branch_id').val() || '');
             var woDate = $('#wo_date').val();
-            var sameCompany = !woCompanyId || String(formCompanyId || '') === String(woCompanyId || '');
 
-            if (isEditWO && sameCompany && branchId === initialBranchId && woDate === initialWoDate) {
+            if (isEditWO) {
                 if (woPreviewRequest && woPreviewRequest.abort) {
                     woPreviewRequest.abort();
                 }

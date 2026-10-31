@@ -1,3 +1,6 @@
+@php
+    $user?->loadMissing('designation');
+@endphp
 <div class="d-flex align-items-center mb-3">
   <div class="avatar me-4">
     <i class="bx bx-user fs-3"></i>

@@ -18,6 +18,7 @@
       <table class="table border-top table-border-bottom-0">
         <thead>
           <tr>            
+            <th>Actions</th>
             <th>Code</th>
             <th>Date</th>
             <th>Vendor</th>
@@ -25,7 +26,6 @@
             <th>Status</th>
             <th>Cost</th>
             <th>Duration</th>
-            <th>Actions</th>
           </tr>
         </thead>
 
@@ -33,7 +33,37 @@
           @forelse($asset->maintenance as $maintenance)
           <tr>
 
-           
+            {{-- Actions --}}
+            <td class="text-truncate">
+              <div class="d-flex align-items-center gap-3">
+
+                @if($maintenance->status != 'completed')
+
+                {{-- Edit --}}
+                @can('asset.maintenance:edit')
+                <a class="btn btn-icon edit-record"
+                   href="{{ route('asset.maintenance.edit', $maintenance) }}">
+                  <i class="bx bx-edit"></i>
+                </a>
+               @endcan
+
+                {{-- Delete --}}
+                @can('asset.maintenance:delete')
+                <form method="POST"
+                      action="{{ route('asset.maintenance.destroy', $maintenance) }}"
+                      class="delete-form">
+                  @csrf
+                  @method('DELETE')
+                  <button class="btn btn-icon delete-record">
+                    <i class="bx bx-trash"></i>
+                  </button>
+                </form>
+                @endcan
+
+                @endif
+
+              </div>
+            </td>
 
             {{-- Code --}}
             <td>{{ $maintenance->maintenance_code }}</td>
@@ -105,45 +135,10 @@
               @endif
             </td>
 
-            {{-- Actions --}}
-            <td class="text-truncate">
-              <div class="d-flex align-items-center gap-3">
-
-                @if($maintenance->status != 'completed')
-
-                {{-- Edit --}}
-                @can('asset.maintenance:edit')
-                <a class="btn btn-icon edit-record"
-                   href="{{ route('asset.maintenance.edit', $maintenance) }}">
-                  <i class="bx bx-edit"></i>
-                </a>
-               @endcan
-
-                {{-- Delete --}}
-                @can('asset.maintenance:delete')
-                <form method="POST"
-                      action="{{ route('asset.maintenance.destroy', $maintenance) }}"
-                      class="delete-form">
-                  @csrf
-                  @method('DELETE')
-                  <button class="btn btn-icon delete-record">
-                    <i class="bx bx-trash"></i>
-                  </button>
-                </form>
-                @endcan
-
-                @endif
-               
-
-                 
-
-              </div>
-            </td>
-
           </tr>
           @empty
           <tr>
-            <td colspan="9" class="text-center">No Maintenance Records Found</td>
+            <td colspan="8" class="text-center">No Maintenance Records Found</td>
           </tr>
           @endforelse
         </tbody>

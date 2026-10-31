@@ -101,6 +101,14 @@
         .totals .label { text-align: left; }
         .totals .value { text-align: right; width: 90px; }
         .totals .grand-label { font-weight: bold; }
+        .misc-charges {
+            margin-top: 10px;
+        }
+        .misc-charges th {
+            font-weight: bold;
+        }
+        .misc-charges .label { white-space: nowrap; }
+        .misc-charges .value { width: auto; white-space: nowrap; padding-left: 16px; }
         .in-words {
             border: 1px solid #000;
             border-top: none;
@@ -323,85 +331,98 @@
 </table>
 
 @if(!isset($isExcel) || !$isExcel)
+@php
+    $totalItemTax = $totalTax;
+    $miscChargeLines = collect();
+    if ($po->charges && $po->charges->count() > 0) {
+        $miscChargeLines = $po->charges->map(fn ($c) => [
+            'name' => $c->charge_name,
+            'amount' => (float) $c->amount,
+        ]);
+        $totalMiscValues = $po->charges->sum(fn ($c) => (float) $c->amount);
+        $totalMiscTax = $po->charges->sum(fn ($c) => (float) $c->tax_amount);
+    } else {
+        $totalMiscValues = (float) $po->miscellaneous_charges;
+        $totalMiscTax = (float) $po->miscellaneous_tax_amount;
+        if ($totalMiscValues > 0) {
+            $miscChargeLines = collect([[
+                'name' => $po->miscellaneousCharge?->charge_name ?? 'Miscellaneous Charges',
+                'amount' => $totalMiscValues,
+            ]]);
+        }
+    }
+    $totalExcludingTax = (float) $po->total_value + $totalMiscValues;
+
+    $sgst = (float) $po->sgst;
+    $cgst = (float) $po->cgst;
+    $igst = (float) $po->igst;
+
+    $displayIgst = $igst;
+    $displaySgst = $sgst;
+    $displayCgst = $cgst;
+
+    $isInterState = false;
+    if ($po->branch && $po->vendor) {
+        $branchState = trim(strtolower((string) $po->branch->state));
+        $vendorState = trim(strtolower((string) $po->vendor->state));
+
+        if ($branchState === '') $branchState = 'karnataka';
+        if ($vendorState === '') $vendorState = 'karnataka';
+
+        if ($branchState !== $vendorState) {
+            $isInterState = true;
+        }
+    }
+@endphp
 <table class="bottom-wrap">
     <tr>
-        <td style="width:42%; padding-right:8px;">
+        <td style="width:48%; padding-right:10px;">
             <div class="remarks">
                 <div class="remarks-title">Remarks</div>
                 <div>{{ $po->remarks ?: '' }}</div>
             </div>
+            @if($miscChargeLines->isNotEmpty())
+            <table class="totals misc-charges">
+                <tr>
+                    <th colspan="2"><strong>Total Miscellaneous Charges</strong></th>
+                </tr>
+                @foreach($miscChargeLines as $chargeLine)
+                    <tr>
+                        <td class="label">{{ $chargeLine['name'] }}</td>
+                        <td class="value">{{ number_format($chargeLine['amount'], 2) }}</td>
+                    </tr>
+                @endforeach
+                <tr>
+                    <td class="label">Total Misc Value</td>
+                    <td class="value">{{ number_format($totalMiscValues, 2) }}</td>
+                </tr>
+            </table>
+            @endif
         </td>
-        <td style="width:58%;">
+        <td style="width:52%;">
             <table class="totals">
                 <tr>
                     <th colspan="2">Total PO Values</th>
                 </tr>
-                @php
-                    $totalItemTax = $totalTax;
-                    $totalMiscValues = 0;
-                    $totalMiscTax = 0;
-                    if ($po->charges && $po->charges->count() > 0) {
-                        $totalMiscValues = $po->charges->sum(fn ($c) => (float) $c->amount);
-                        $totalMiscTax = $po->charges->sum(fn ($c) => (float) $c->tax_amount);
-                    } else {
-                        $totalMiscValues = (float) $po->miscellaneous_charges;
-                        $totalMiscTax = (float) $po->miscellaneous_tax_amount;
-                    }
-                    $totalItemMiscValues = (float) $po->total_value + $totalMiscValues;
-
-                    $sgst = (float) $po->sgst;
-                    $cgst = (float) $po->cgst;
-                    $igst = (float) $po->igst;
-
-                    $displayIgst = $igst;
-                    $displaySgst = $sgst;
-                    $displayCgst = $cgst;
-
-                    $isInterState = false;
-                    if ($po->branch && $po->vendor) {
-                        $branchState = trim(strtolower((string) $po->branch->state));
-                        $vendorState = trim(strtolower((string) $po->vendor->state));
-
-                        if ($branchState === '') $branchState = 'karnataka';
-                        if ($vendorState === '') $vendorState = 'karnataka';
-
-                        if ($branchState !== $vendorState) {
-                            $isInterState = true;
-                        }
-                    }
-                @endphp
                 <tr>
-                    <td class="label">Total Items Value</td>
+                    <td class="label">Total Item Value</td>
                     <td class="value">{{ number_format((float) $po->total_value, 2) }}</td>
                 </tr>
-                <tr>
-                    <td class="label">Total Items Tax Value</td>
-                    <td class="value">{{ number_format($totalItemTax, 2) }}</td>
-                </tr>
-                @if($po->charges && $po->charges->count() > 0)
-                    @foreach($po->charges as $charge)
-                        <tr>
-                            <td class="label">{{ $charge->charge_name }}</td>
-                            <td class="value">{{ number_format((float) $charge->amount, 2) }}</td>
-                        </tr>
-                    @endforeach
-                @elseif((float) $po->miscellaneous_charges > 0)
-                    <tr>
-                        <td class="label">{{ $po->miscellaneousCharge?->charge_name ?? 'Miscellaneous Charges' }}</td>
-                        <td class="value">{{ number_format((float) $po->miscellaneous_charges, 2) }}</td>
-                    </tr>
-                @endif
                 <tr>
                     <td class="label">Total Misc Value</td>
                     <td class="value">{{ number_format($totalMiscValues, 2) }}</td>
                 </tr>
                 <tr>
-                    <td class="label">Total Misc Tax Value</td>
-                    <td class="value">{{ number_format($totalMiscTax, 2) }}</td>
+                    <td class="label grand-label"><strong>Total(Excluding Tax)</strong></td>
+                    <td class="value"><strong>{{ number_format($totalExcludingTax, 2) }}</strong></td>
                 </tr>
                 <tr>
-                    <td class="label">Total Item+Misc Values</td>
-                    <td class="value">{{ number_format($totalItemMiscValues, 2) }}</td>
+                    <td class="label">Total Items Tax Value</td>
+                    <td class="value">{{ number_format($totalItemTax, 2) }}</td>
+                </tr>
+                <tr>
+                    <td class="label">Total Misc Tax Value</td>
+                    <td class="value">{{ number_format($totalMiscTax, 2) }}</td>
                 </tr>
                 @if($isInterState)
                     <tr>
@@ -419,7 +440,7 @@
                     </tr>
                 @endif
                 <tr>
-                    <td class="label grand-label">Grand Total</td>
+                    <td class="label grand-label"><strong>Total(Including Tax)</strong></td>
                     <td class="value"><strong>{{ number_format((float) $po->grand_total, 2) }}</strong></td>
                 </tr>
             </table>

@@ -22,6 +22,8 @@
             <div class="col-md-3"><strong>Employee:</strong> {{ $materialIssue->employee->employee_name ?? 'N/A' }}</div>
         </div>
         <div class="row">
+            <div class="col-md-3"><strong>Company:</strong> {{ $materialIssue->materialRequest?->company?->name ?? $materialIssue->materialRequest?->branch?->company?->name ?? 'N/A' }}</div>
+            <div class="col-md-3"><strong>Branch:</strong> {{ $materialIssue->materialRequest?->branch?->name ?? 'N/A' }}</div>
             <div class="col-md-3">
                 <strong>Status:</strong>
                 @if($materialIssue->status === 'cancelled')

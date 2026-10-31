@@ -12,6 +12,57 @@
 @include('partials.content-zoom-style')
 <style>
     .fs-12px { font-size: 0.75rem !important; }
+    #ticketTable {
+        margin-bottom: 0;
+    }
+    #ticketTable th,
+    #ticketTable td {
+        vertical-align: middle;
+    }
+    #ticketTable .col-fit {
+        width: 1%;
+        white-space: nowrap !important;
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+    }
+    #ticketTable .col-id {
+        width: 1%;
+        white-space: nowrap !important;
+        padding-left: 0.35rem;
+        padding-right: 0.75rem;
+    }
+    #ticketTable td.ticket-meta {
+        vertical-align: top;
+        white-space: nowrap !important;
+        padding-top: 0.85rem;
+    }
+    #ticketTable .status-time {
+        display: block;
+        white-space: nowrap;
+        margin-top: 0.15rem;
+    }
+    #ticketTable th.actions-col,
+    #ticketTable td.actions-col {
+        text-align: center;
+        width: 1%;
+        white-space: nowrap !important;
+    }
+    #ticketTable td.actions-col .dropdown {
+        display: flex;
+        justify-content: center;
+    }
+    #ticketTable th.created-col,
+    #ticketTable td.created-cell {
+        text-align: center;
+        width: 1%;
+        white-space: normal !important;
+    }
+    #ticketTable .created-date,
+    #ticketTable .created-time {
+        display: block;
+        white-space: nowrap;
+        line-height: 1.3;
+    }
 </style>
 @endsection
 
@@ -33,7 +84,7 @@
 {{-- Filters --}}
 <div class="card mb-4">
     <div class="card-body">
-        <form method="GET" action="{{ route('support-ticket.index') }}" class="row g-3">
+        <form id="supportTicketFilterForm" method="GET" action="{{ route('support-ticket.index') }}" class="row g-3">
 
              <div class="col-md-3">
             <label class="form-label">Company</label>
@@ -66,12 +117,12 @@
         </div>
 
             <div class="col-md-3">
-                <label class="form-label">Department</label>
-                <select class="form-select" name="department_id" id="department_id">
-                    <option value="">All Department</option>
-                    @foreach($department as $item)
-                        <option value="{{ $item->id }}" {{ request('department_id')==$item->id?'selected':'' }}>
-                            {{ $item->department_name }}
+                <label class="form-label">Division</label>
+                <select class="form-select" name="division_id" id="division_id">
+                    <option value="">All Divisions</option>
+                    @foreach($divisions as $item)
+                        <option value="{{ $item->id }}" {{ request('division_id')==$item->id?'selected':'' }}>
+                            {{ $item->division_name }}
                         </option>
                     @endforeach
                 </select>
@@ -118,11 +169,11 @@
                     <option value="">All</option>
                     <option value="open" {{ request('status') == 'open' ? 'selected' : '' }}>Open</option>
                     <option value="accepted" {{ request('status') == 'accepted' ? 'selected' : '' }}>Accepted</option>
-                    <option value="work_in_progress" {{ request('status') == 'work_in_progress' ? 'selected' : '' }}>WIP</option>
-                    <option value="hold" {{ request('status') == 'hold' ? 'selected' : '' }}>Hold</option>
+                    @foreach(\App\Models\SupportTicketProgressStatus::selectable() as $progressStatus)
+                    <option value="{{ $progressStatus->slug }}" {{ request('status') == $progressStatus->slug ? 'selected' : '' }}>{{ $progressStatus->name }}</option>
+                    @endforeach
                     <option value="completed" {{ request('status') == 'completed' ? 'selected' : '' }}>Completed</option>
                     <option value="closed" {{ request('status') == 'closed' ? 'selected' : '' }}>Closed</option>
-                    <option value="in_purchase" {{ request('status') == 'in_purchase' ? 'selected' : '' }}>In Purchase</option>
                     <option value="reopen" {{ request('status') == 'reopen' ? 'selected' : '' }}>Reopen</option>
                     <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>Rejected</option>
                 </select>
@@ -139,13 +190,23 @@
             </div>
 
             <div class="col-md-3">
-                <label class="form-label">Subject</label>
+                <label class="form-label">Common Search</label>
                 <div class="input-group">
-                    <input type="text" name="subject" class="form-control" value="{{ request('subject') }}">
+                    <input type="text" name="subject" class="form-control" placeholder="ID, Subject..." value="{{ request('subject') }}">
                     <button type="submit" class="btn btn-primary">
                         <i class="bx bx-search"></i>
                     </button>
                 </div>
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label" for="per_page">Per Page</label>
+                <select id="per_page" name="per_page" class="form-select" onchange="this.form.submit()">
+                    @foreach ([10, 25, 50, 100] as $size)
+                        <option value="{{ $size }}" @selected((string) request('per_page', 50) === (string) $size)>{{ $size }}</option>
+                    @endforeach
+                    <option value="all" @selected(request('per_page') === 'all')>All</option>
+                </select>
             </div>
 
         </form>
@@ -158,69 +219,44 @@
         <div>
             <h5 class="mb-0">Tickets List</h5>
         </div>
-        <a href="{{ route('support-ticket.create') }}" class="btn btn-primary">
-            <i class="bx bx-plus me-1"></i> New Ticket
-        </a>
+        <div class="d-flex align-items-center gap-2">
+            <button type="submit" class="btn btn-sm btn-success" form="supportTicketFilterForm" name="export_format" value="excel">Excel</button>
+            <button type="submit" class="btn btn-sm btn-danger" form="supportTicketFilterForm" name="export_format" value="pdf">PDF</button>
+            <a href="{{ route('support-ticket.create') }}" class="btn btn-primary">
+                <i class="bx bx-plus me-1"></i> New Ticket
+            </a>
+        </div>
     </div>
 
     <div class="table-responsive">
         <table class="table card-table" id="ticketTable">
             <thead>
                 <tr>
-                    <th>#</th>
-                    <th>ID</th>
+                    <th class="actions-col">Actions</th>
+                    <th class="col-fit">#</th>
+                    <th class="col-id">ID</th>
                     <th>Subject</th>
-                    <th>Priority</th>
-                    <th>Status</th>
+                    <th class="col-fit">Priority</th>
+                    <th class="col-fit">Status</th>
                     <th>Branch</th>
-                    <th>Department</th>
-                    <th>Due Date</th>
+                    <th>Division</th>
+                    <th class="col-fit">Due Date</th>
+                    <th class="created-col">Created</th>
                     <th>Created By</th>
                     <th>Collaborators</th>
-                    <th>Actions</th>
                 </tr>
             </thead>
 
             <tbody>
                 @forelse($tickets as $ticket)
                 <tr>
-                    <td>{{ $tickets->firstItem() + $loop->index }}.</td>
-                    <td>#{{ $ticket->id }}</td>
-
-                    <td>
-                        <strong>{{ $ticket->subject }}</strong>
-                        <div class="text-muted fs-12px">
-                            {{ Str::limit($ticket->description, 60) }}
-                        </div>
-                    </td>
-
-                    <td>{!! $ticket->priority_label !!}</td>
-
-                    <td>{!! $ticket->status_label !!}</td>
-
-                    <td>{{ $ticket->branch?->name ?? '-' }}</td>
-
-                    <td>{{ $ticket->department?->department_name ?? '-' }}</td>
-
-                    <td>{{ optional($ticket->due_date)->format('d M Y') ?? '-' }}</td>
-
-                    <td>{{ $ticket->creator?->name ?? '-' }}</td>
-
-                    <td>
-                        @forelse($ticket->activeAssignments as $collaborator)
-                            <span class="badge bg-label-info">{{ $collaborator->user->name ?? '-' }}</span>
-                        @empty
-                            --
-                        @endforelse
-                    </td>
-
-                    <td>
+                    <td class="actions-col">
                         <div class="dropdown">
-                            <button class="btn p-0 btn-sm" data-bs-toggle="dropdown">
+                            <button type="button" class="btn btn-sm btn-icon btn-outline-secondary dropdown-toggle hide-arrow" data-bs-toggle="dropdown" data-bs-popper-config='{"strategy":"fixed"}'>
                                 <i class="bx bx-dots-vertical-rounded"></i>
                             </button>
 
-                            <ul class="dropdown-menu dropdown-menu-end">
+                            <ul class="dropdown-menu">
                                 <li>
                                     <a class="dropdown-item" href="{{ route('support-ticket.show',$ticket->id) }}">
                                         <i class="bx bx-show me-1"></i> View
@@ -250,10 +286,55 @@
                             </ul>
                         </div>
                     </td>
+                    <td class="col-fit">{{ $tickets->firstItem() + $loop->index }}.</td>
+                    <td class="col-id">{{ $ticket->displayTicketNumber() }}</td>
+
+                    <td>
+                        <strong>{{ $ticket->subject }}</strong>
+                        <div class="text-muted fs-12px">
+                            {{ Str::limit($ticket->description, 60) }}
+                        </div>
+                    </td>
+
+                    <td class="ticket-meta">{!! $ticket->priority_label !!}</td>
+
+                    <td class="ticket-meta">
+                        {!! $ticket->status_label !!}
+                        @if($ticket->status === 'completed' && $ticket->marked_completed_at)
+                            <span class="status-time text-muted fs-12px">{{ $ticket->marked_completed_at->format('d M Y, h:i A') }}</span>
+                        @elseif($ticket->status === 'closed' && $ticket->completed_at)
+                            <span class="status-time text-muted fs-12px">{{ $ticket->completed_at->format('d M Y, h:i A') }}</span>
+                        @endif
+                    </td>
+
+                    <td>{{ $ticket->branch?->name ?? '-' }}</td>
+
+                    <td>{{ $ticket->division?->division_name ?? '-' }}</td>
+
+                    <td class="col-fit">{{ optional($ticket->due_date)->format('d M Y') ?? '-' }}</td>
+
+                    <td class="created-cell">
+                        @if($ticket->created_at)
+                            <span class="created-date">{{ $ticket->created_at->format('d M Y') }}</span>
+                            <span class="created-time">{{ $ticket->created_at->format('h:i A') }}</span>
+                        @else
+                            -
+                        @endif
+                    </td>
+
+                    <td>{{ $ticket->creator?->name ?? '-' }}</td>
+
+                    <td>
+                        @forelse($ticket->activeAssignments as $collaborator)
+                            <span class="badge bg-label-info">{{ $collaborator->user->name ?? '-' }}</span>
+                        @empty
+                            --
+                        @endforelse
+                    </td>
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="9" class="text-center py-5 text-muted">
+                    <td colspan="12" class="text-center py-5 text-muted">
                         No tickets found
                     </td>
                 </tr>
@@ -331,7 +412,7 @@
 
             $.get(
                 "{{ route('ajax.getusers.bybranch', ':id') }}".replace(':id', branchId),
-                { for_filter: 1, department_id: $('#department_id').val() || '' },
+                { for_filter: 1, division_id: $('#division_id').val() || '' },
                 function (res) {
                     collaboratorDropdown.empty().append('<option value="">All Collaborators</option>');
 
@@ -358,7 +439,7 @@
             loadCollaborators(this.value);
         });
 
-        $('#department_id').on('change', function () {
+        $('#division_id').on('change', function () {
             if ($('#branch_id').val()) {
                 loadCollaborators($('#branch_id').val(), "{{ request('collaborator_id') }}");
             }
@@ -392,10 +473,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
 $(function() {
     $('#ticketTable').DataTable({
-        pageLength: 10,
-        responsive: true,
-        order: [[0, 'desc']],
-        columnDefs: [{ orderable: false, targets: -1 }]
+        paging: false,
+        info: false,
+        lengthChange: false,
+        searching: false,
+        responsive: false,
+        autoWidth: false,
+        order: [[1, 'desc']],
+        columnDefs: [
+            { orderable: false, targets: 0, width: '1%' },
+            { targets: [1, 2, 4, 5, 8, 9], width: '1%' }
+        ]
     });
 });
 </script>

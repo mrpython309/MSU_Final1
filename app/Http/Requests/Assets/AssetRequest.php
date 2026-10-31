@@ -19,6 +19,17 @@ class AssetRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $asset = $this->existingAsset();
+
+        if ($asset && filled($asset->asset_code)) {
+            $this->merge([
+                'asset_code' => $asset->asset_code,
+            ]);
+        }
+    }
+
     /**
      * Get the validation rules that apply to the request.
      *
@@ -126,6 +137,23 @@ class AssetRequest extends FormRequest
             /* ================= DESCRIPTION ================= */
             'description'       => 'nullable|string|max:2000',
         ];
+    }
+
+    private function existingAsset(): ?\App\Models\Asset
+    {
+        $asset = $this->route('asset');
+
+        if ($asset instanceof \App\Models\Asset) {
+            return $asset;
+        }
+
+        $assetId = is_numeric($asset) ? $asset : $this->route('id');
+
+        if (! is_numeric($assetId)) {
+            return null;
+        }
+
+        return \App\Models\Asset::query()->find($assetId);
     }
 
     public function messages(): array

@@ -53,7 +53,12 @@
 
                 <div class="row g-3">
 
-                    <div class="col-md-6">
+                    <div class="col-md-4">
+                        <label class="form-label" for="ticket_number_preview">Ticket ID</label>
+                        <input type="text" id="ticket_number_preview" class="form-control" value="{{ $previewTicketNumber }}" readonly disabled>
+                    </div>
+
+                    <div class="col-md-4">
                         <label class="form-label">Subject <span class="text-danger">*</span></label>
                         <input type="text" name="subject" required
                             class="form-control @error('subject') is-invalid @enderror"
@@ -61,7 +66,7 @@
                         @error('subject')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label class="form-label">Priority <span class="text-danger">*</span></label>
                         <select name="priority" required
                             class="form-select @error('priority') is-invalid @enderror">
@@ -74,7 +79,7 @@
                         @error('priority')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label class="form-label">Due Date</label>
                         <input type="date" name="due_date" value="{{date('Y-m-d')}}"
                             class="form-control @error('due_date') is-invalid @enderror"
@@ -126,15 +131,15 @@
                     </div>
 
                     <div class="col-md-4">
-                        <label class="form-label">Department <span class="text-danger">*</span></label>
-                        <select id="department_id" name="department_id" required
-                            class="form-select @error('department_id') is-invalid @enderror">
-                            <option value="">Select Department</option>
-                            @foreach($departments as $department)
-                                <option value="{{ $department->id }}">{{ $department->department_name }}</option>
+                        <label class="form-label">Division <span class="text-danger">*</span></label>
+                        <select id="division_id" name="division_id" required
+                            class="form-select @error('division_id') is-invalid @enderror">
+                            <option value="">Select Division</option>
+                            @foreach($divisions as $division)
+                                <option value="{{ $division->id }}" @selected((string) old('division_id') === (string) $division->id)>{{ $division->division_name }}</option>
                             @endforeach
                         </select>
-                        @error('department_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        @error('division_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 
                 </div>
@@ -187,6 +192,30 @@
     let pendingDepartmentId = null;
     let suppressAssetReloadOnBranchChange = false;
     let syncingFromAsset = false;
+    let ticketPreviewToken = 0;
+    let ticketPreviewRequest = null;
+
+    function refreshTicketNumberPreview() {
+        const token = ++ticketPreviewToken;
+        if (ticketPreviewRequest && ticketPreviewRequest.abort) {
+            ticketPreviewRequest.abort();
+        }
+
+        ticketPreviewRequest = $.ajax({
+            url: @json(route('support-ticket.preview-ticket-number')),
+            type: 'GET',
+            dataType: 'json',
+            data: {
+                company_id: $('#company_id').val() || '',
+                branch_id: $('#branch_id').val() || ''
+            }
+        }).done(function (res) {
+            if (token !== ticketPreviewToken) return;
+            if (res.success && res.ticket_number) {
+                $('#ticket_number_preview').val(res.ticket_number);
+            }
+        });
+    }
 
     const assetMeta = @json($assetMeta);
 
@@ -269,17 +298,23 @@
                     } else {
                         branchDropdown.append('<option value="">No branches found</option>');
                     }
+
+                    refreshTicketNumberPreview();
                 },
                 error: function () {
                     branchDropdown.html('<option value="">Failed to load branches</option>');
+                    refreshTicketNumberPreview();
                 }
             });
         } else {
             branchDropdown.html('<option value="">Select Branch</option>');
+            refreshTicketNumberPreview();
         }
     });
 
     $('#branch_id').on('change', function () {
+        refreshTicketNumberPreview();
+
         if (suppressAssetReloadOnBranchChange) {
             suppressAssetReloadOnBranchChange = false;
             return;
@@ -358,9 +393,7 @@
                     suppressAssetReloadOnBranchChange = true;
                     $('#branch_id').val(String(pb)).trigger('change');
                 }
-                if (pd) {
-                    $('#department_id').val(String(pd)).trigger('change');
-                }
+                pendingDepartmentId = null;
                 pendingBranchId = null;
                 pendingDepartmentId = null;
             } finally {

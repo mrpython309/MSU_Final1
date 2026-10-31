@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\SupportTicket;
+use App\Models\SupportTicketProgressStatus;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -38,17 +39,6 @@ class SupportTicketReportExportService
         'normal' => 'Normal',
         'high' => 'High',
         'urgent' => 'Urgent',
-    ];
-
-    private const STATUS_LABELS = [
-        'open' => 'Open',
-        'accepted' => 'Accepted',
-        'work_in_progress' => 'Work In Progress',
-        'hold' => 'On Hold',
-        'in_purchase' => 'In Purchase',
-        'completed' => 'Completed',
-        'closed' => 'Closed',
-        'reopen' => 'Reopen',
     ];
 
     public function ticketHeaders(array $tableColumns): array
@@ -175,7 +165,7 @@ class SupportTicketReportExportService
         return match ($column) {
             'subject' => trim((string) $ticket->subject),
             'priority' => self::PRIORITY_LABELS[(string) $ticket->priority] ?? (string) $ticket->priority,
-            'status' => self::STATUS_LABELS[(string) $ticket->status] ?? (string) $ticket->status,
+            'status' => SupportTicketProgressStatus::plain((string) $ticket->status),
             'company_id' => (string) ($ticket->company?->name ?? ''),
             'branch_id' => (string) ($ticket->branch?->name ?? ''),
             'department_id' => (string) ($ticket->department?->department_name ?? ''),

@@ -153,7 +153,12 @@ class MsuWorkOrderController extends Controller implements HasMiddleware
     private function filteredItems(Request $request): Collection
     {
         return MsuWorkOrderItem::query()
-            ->with(['workOrder.vendor', 'workOrder.branch.company', 'unit'])
+            ->with([
+                'workOrder.vendor',
+                'workOrder.branch.company',
+                'unit',
+                'invoiceItems.workInvoice',
+            ])
             ->whereHas('workOrder', function ($q) use ($request) {
                 $this->applyWoFilters($q, $request);
             })
@@ -177,6 +182,24 @@ class MsuWorkOrderController extends Controller implements HasMiddleware
                 {
                     return $this->rows->values()->map(function (MsuWorkOrderItem $item, int $index) {
                         $wo = $item->workOrder;
+                        $invoices = $item->invoiceItems
+                            ->map(fn ($line) => $line->workInvoice)
+                            ->filter()
+                            ->unique('id')
+                            ->sortBy(fn ($invoice) => sprintf(
+                                '%s-%010d',
+                                optional($invoice->invoice_date)->format('Y-m-d') ?? '9999-99-99',
+                                $invoice->id
+                            ))
+                            ->values();
+                        $from = $wo?->contract_period_from?->format('d-m-Y');
+                        $to = $wo?->contract_period_to?->format('d-m-Y');
+                        $contractPeriod = match (true) {
+                            $from && $to => $from.' to '.$to,
+                            (bool) $from => $from,
+                            (bool) $to => $to,
+                            default => null,
+                        };
 
                         return [
                             $index + 1,
@@ -184,8 +207,13 @@ class MsuWorkOrderController extends Controller implements HasMiddleware
                             $wo?->branch?->name,
                             $wo?->wo_number,
                             optional($wo?->wo_date)->format('d-m-Y'),
+                            $wo?->vendor?->name,
+                            $wo?->vendor?->gst_number,
+                            $wo?->subject,
+                            $item->scope_of_work,
                             $item->work_description,
                             $item->hsn,
+                            $item->unit?->unit_name,
                             (float) $item->quantity,
                             (float) $item->price,
                             $item->gross_value,
@@ -193,6 +221,10 @@ class MsuWorkOrderController extends Controller implements HasMiddleware
                             $item->tax_value,
                             (float) $item->net_value,
                             $wo?->statusEnum()?->label(),
+                            $invoices->map(fn ($invoice) => filled($invoice->invoice_number) ? $invoice->invoice_number : $invoice->wi_number)->filter()->implode(', ') ?: null,
+                            $invoices->map(fn ($invoice) => $invoice->invoice_date?->format('d-m-Y'))->filter()->unique()->implode(', ') ?: null,
+                            null,
+                            $contractPeriod,
                         ];
                     });
                 }
@@ -200,9 +232,10 @@ class MsuWorkOrderController extends Controller implements HasMiddleware
                 public function headings(): array
                 {
                     return [
-                        'S/No', 'Company', 'Branch', 'WO Number', 'WO Date',
-                        'Work Description', 'HSN', 'Qty', 'Rate', 'Gross Value',
-                        'Tax %', 'Tax Value', 'Net Value', 'Status',
+                        'S/No', 'Company', 'Branch', 'WO Number', 'WO Date', 'Vendor', 'Vendor GST',
+                        'Subject', 'Scope of Work', 'Work Description', 'HSN', 'UOM', 'Qty', 'Rate',
+                        'Gross Value', 'Tax %', 'Tax Value', 'Net Value', 'Status', 'Invoice No',
+                        'Invoice Date', 'Capex / Opex', 'Contract Period',
                     ];
                 }
             };
@@ -211,34 +244,44 @@ class MsuWorkOrderController extends Controller implements HasMiddleware
         }
 
         $rows = $this->filteredWorkOrders($request);
-        $export = new class($rows) implements FromCollection, WithHeadings
+        $export = new class($rows) implements FromCollection, WithHeadings, WithStrictNullComparison
         {
             public function __construct(private readonly Collection $rows) {}
 
             public function collection()
             {
-                return $this->rows->values()->map(fn (MsuWorkOrder $wo, int $index) => [
-                    $index + 1,
-                    $wo->branch?->company?->name,
-                    $wo->branch?->name,
-                    $wo->wo_number,
-                    optional($wo->wo_date)->format('d-m-Y'),
-                    $wo->vendor?->name,
-                    $wo->department?->department_name,
-                    $wo->paymentTerm?->term_name,
-                    $wo->items->count(),
-                    (float) $wo->total_value,
-                    (float) $wo->miscellaneous_charges,
-                    (float) $wo->grand_total,
-                    $wo->statusEnum()->label(),
-                ]);
+                return $this->rows->values()->map(function (MsuWorkOrder $wo, int $index) {
+                    $taxAmount = round((float) $wo->sgst + (float) $wo->cgst + (float) $wo->igst, 2);
+                    $taxable = (float) $wo->total_value + (float) $wo->miscellaneous_charges;
+                    $taxPercent = $taxable > 0 ? round($taxAmount / $taxable * 100, 2) : 0;
+
+                    return [
+                        $index + 1,
+                        $wo->branch?->company?->name,
+                        $wo->branch?->name,
+                        $wo->wo_number,
+                        optional($wo->wo_date)->format('d-m-Y'),
+                        $wo->vendor?->name,
+                        $wo->vendor?->gst_number,
+                        $wo->department?->department_name,
+                        $wo->paymentTerm?->term_name,
+                        $wo->items->count(),
+                        (float) $wo->total_value,
+                        (float) $wo->miscellaneous_charges,
+                        $taxPercent,
+                        $taxAmount,
+                        (float) $wo->grand_total,
+                        $wo->statusEnum()->label(),
+                    ];
+                });
             }
 
             public function headings(): array
             {
                 return [
-                    'S/No', 'Company', 'Branch', 'WO Number', 'WO Date', 'Vendor', 'Department',
-                    'Payment Terms', 'Items', 'Total Value', 'Misc Charges', 'Grand Total', 'Status',
+                    'S/No', 'Company', 'Branch', 'WO Number', 'WO Date', 'Vendor', 'Vendor GST',
+                    'Department', 'Payment Terms', 'Items', 'Total Value', 'Misc Charges',
+                    'Tax %', 'Tax Amount', 'Grand Total', 'Status',
                 ];
             }
         };
@@ -371,20 +414,8 @@ class MsuWorkOrderController extends Controller implements HasMiddleware
 
         DB::transaction(function () use ($request, $msuWorkOrder) {
             $validated = $request->validated();
-            
-            $woNumber = $msuWorkOrder->wo_number;
-            if ($msuWorkOrder->branch_id != ($validated['branch_id'] ?? null) || $msuWorkOrder->wo_date->format('Y-m-d') !== \Carbon\Carbon::parse($validated['wo_date'])->format('Y-m-d')) {
-                $numberGenerator = app(\App\Services\Procurement\DocumentNumberGenerator::class);
-                $branch = \App\Models\Branch::with('company')->find($validated['branch_id']);
-                if ($branch) {
-                    $branchCode = $branch->code ?: $branch->name;
-                    $companyCode = $branch->company?->code ?: 'MSULLP';
-                    $woNumber = $numberGenerator->nextMsuWoNumber($companyCode, $branchCode, $validated['wo_date']);
-                }
-            }
 
             $msuWorkOrder->update([
-                'wo_number' => $woNumber,
                 'wo_date' => $validated['wo_date'],
                 'contract_period_from' => $validated['contract_period_from'] ?? null,
                 'contract_period_to' => $validated['contract_period_to'] ?? null,
@@ -494,7 +525,7 @@ class MsuWorkOrderController extends Controller implements HasMiddleware
 
     public function pdf(MsuWorkOrder $msuWorkOrder, ReportPdfExportService $pdfExport)
     {
-        $msuWorkOrder->load(['vendor', 'branch', 'paymentTerm', 'miscellaneousCharge', 'shippingDetail', 'items.unit']);
+        $msuWorkOrder->load(['vendor', 'branch', 'paymentTerm', 'miscellaneousCharge', 'shippingDetail', 'items.unit', 'charges']);
 
         $filename = str_replace(['/', '\\'], '-', $msuWorkOrder->wo_number) . '.pdf';
 
@@ -546,11 +577,7 @@ class MsuWorkOrderController extends Controller implements HasMiddleware
         $previewWoNumber = app(DocumentNumberGenerator::class)
             ->previewMsuWoNumber($companyCode, $branchCode, $woDate);
 
-        $displayWoNumber = $wo
-            && (string) $companyId === (string) $woCompanyId
-            && (string) $selectedBranchId === (string) $wo->branch_id
-            ? $wo->wo_number
-            : $previewWoNumber;
+        $displayWoNumber = $wo?->wo_number ?: $previewWoNumber;
 
         return [
             'vendors' => Vendor::active()->orderBy('name')->get(),

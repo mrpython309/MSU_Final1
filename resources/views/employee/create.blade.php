@@ -65,14 +65,14 @@
                     </div>
 
                     <div class="col-md-4 mb-3">
-                        <label class="form-label form-label-required">Emp Code <span class="text-danger">*</span> </label>
-                        <input type="text" name="emp_code" class="form-control @error('emp_code') is-invalid @enderror" value="{{ old('emp_code') }}" placeholder="Enter Emp Code" required>
+                        <label class="form-label">Emp Code</label>
+                        <input type="text" name="emp_code" class="form-control @error('emp_code') is-invalid @enderror" value="{{ old('emp_code') }}" placeholder="Enter Emp Code">
                         @error('emp_code') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>                    
 
                     <div class="col-md-4 mb-3">
-                        <label class="form-label form-label-required">Date of Joining <span class="text-danger">*</span></label>
-                        <input type="date" name="date_of_joining" class="form-control @error('date_of_joining') is-invalid @enderror" value="{{ old('date_of_joining',date('Y-m-d')) }}" required>
+                        <label class="form-label">Date of Joining</label>
+                        <input type="date" name="date_of_joining" class="form-control @error('date_of_joining') is-invalid @enderror" value="{{ old('date_of_joining') }}">
                         @error('date_of_joining') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
 
@@ -89,14 +89,14 @@
                     </div>                    
 
                     <div class="col-md-4 mb-3">
-                        <label class="form-label">  Designation <span class="text-danger">*</span> </label>
-                        <select name="designation_id" id="designation_id" class="form-select @error('designation_id') is-invalid @enderror" required>
-                            <option value="">Select Designation</option>
-                            @foreach($designations as $designation)
-                                <option value="{{ $designation->id }}" @selected((string) old('designation_id') === (string) $designation->id)>{{ $designation->designation_name }}</option>
+                        <label class="form-label">Division</label>
+                        <select name="division_id" id="division_id" class="form-select @error('division_id') is-invalid @enderror">
+                            <option value="">Select Division</option>
+                            @foreach($divisions as $division)
+                                <option value="{{ $division->id }}" @selected((string) old('division_id') === (string) $division->id)>{{ $division->division_name }}</option>
                             @endforeach
                         </select>
-                        @error('designation_id') <div class="invalid-feedback">{{ $message }}</div>  @enderror
+                        @error('division_id') <div class="invalid-feedback">{{ $message }}</div>  @enderror
                     </div>
 
                     
@@ -185,8 +185,8 @@
                     </div>
 
                     <div class="col-md-4 mb-3">
-                        <label class="form-label">  Departments <span class="text-danger">*</span> </label>
-                        <select name="department_id[]" id="department_id" multiple class="form-select select2 @error('department_id') is-invalid @enderror" required>
+                        <label class="form-label">Departments</label>
+                        <select name="department_id[]" id="department_id" multiple class="form-select select2 @error('department_id') is-invalid @enderror">
                             @foreach ($departments as $department)
                               <option value="{{$department->id}}" @selected(in_array((string) $department->id, array_map('strval', (array) old('department_id', [])), true))>{{$department->department_name}}</option>  
                             @endforeach                        

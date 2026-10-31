@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers\Dashboard;
 
+use App\Exports\SupportTicketDashboardExport;
 use App\Http\Controllers\Controller;
 use App\Services\ReportPdfExportService;
+use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Http\Request;
 use App\Models\SupportTicket;
-use App\Models\Department;
+use App\Models\SupportTicketProgressStatus;
+use App\Models\Division;
 use App\SupportTicketPriority;
 use App\Models\Branch;
 use App\Models\Company;
@@ -38,9 +41,8 @@ class SupportTicketDashboardController extends Controller
 
    
 
-    // ✅ Department independent
-    $departments = \App\Models\Department::visibleToUser($user)
-        ->orderBy('department_name')
+    $divisions = Division::visibleToUser($user)
+        ->orderBy('division_name')
         ->get();
 
     $collaboratorUsers = User::query()
@@ -48,9 +50,7 @@ class SupportTicketDashboardController extends Controller
         ->visibleToUser($user)
         ->orderBy('name')
         ->select('id', 'name')
-        ->when($request->department_id, fn ($q) => $q->whereHas('departments', fn ($d) =>
-            $d->where('departments.id', $request->department_id)
-        ))
+        ->when($request->division_id, fn ($q) => $q->where('division_id', $request->division_id))
         ->when($request->branch_id, fn ($q) => $q->whereHas('branches', fn ($b) =>
             $b->where('branches.id', $request->branch_id)
         ))
@@ -69,8 +69,8 @@ class SupportTicketDashboardController extends Controller
         ->when($request->branch_id, fn($q) =>
             $q->where('branch_id', $request->branch_id)
         )
-        ->when($request->department_id, fn($q) =>
-            $q->where('department_id', $request->department_id)
+        ->when($request->division_id, fn($q) =>
+            $q->where('division_id', $request->division_id)
         )
         ->when($request->from_date, fn($q) =>
             $q->whereDate('due_date', '>=', $request->from_date)
@@ -119,12 +119,44 @@ class SupportTicketDashboardController extends Controller
         $priorityMatrix[$row->priority][$row->status] = $row->total;
     }
 
+    $statusData = collect(SupportTicketProgressStatus::dashboardDefinitions())
+        ->map(function (array $item) use ($statusCounts) {
+            $item['count'] = (int) ($statusCounts[$item['slug']] ?? 0);
+
+            return $item;
+        })
+        ->filter(fn (array $item) => ($item['show_when_empty'] ?? true) || $item['count'] > 0)
+        ->values();
+
+    $knownSlugs = $statusData->pluck('slug')->all();
+
+    foreach ($statusCounts as $slug => $total) {
+        if (in_array($slug, $knownSlugs, true)) {
+            continue;
+        }
+
+        $label = SupportTicketProgressStatus::plain((string) $slug);
+        $statusData->push([
+            'slug' => (string) $slug,
+            'label' => $label,
+            'short' => $label,
+            'color' => SupportTicketProgressStatus::chartColor((string) $slug),
+            'card_class' => 'card-custom',
+            'kind' => 'progress',
+            'in_matrix' => true,
+            'show_when_empty' => true,
+            'count' => (int) $total,
+        ]);
+    }
+
+    $matrixStatuses = $statusData->filter(fn (array $item) => $item['in_matrix'])->values();
+    $matrixSlugs = $matrixStatuses->pluck('slug')->all();
+
     // Normalize matrix (avoid ?? in blade)
     $priorities = ['high', 'normal', 'low'];
-    $statuses   = ['open', 'accepted', 'hold', 'completed', 'closed', 'rejected'];
 
     foreach ($priorities as $priority) {
-        foreach ($statuses as $status) {
+        foreach ($matrixSlugs as $status) {
             $priorityMatrix[$priority][$status] =
                 $priorityMatrix[$priority][$status] ?? 0;
         }
@@ -132,25 +164,21 @@ class SupportTicketDashboardController extends Controller
 
     $dashboard['priorityMatrix'] = $priorityMatrix;
 
-    // =========================
-    // DEPARTMENT MATRIX (1 QUERY)
-    // =========================
-    $departmentData = (clone $baseQuery)
-        ->select('department_id', 'status', DB::raw('COUNT(*) as total'))
-        ->groupBy('department_id', 'status')
+    $divisionData = (clone $baseQuery)
+        ->select('division_id', 'status', DB::raw('COUNT(*) as total'))
+        ->groupBy('division_id', 'status')
         ->get();
 
-    $departmentMatrix = [];
+    $divisionMatrix = [];
 
-    foreach ($departmentData as $row) {
-        $departmentMatrix[$row->department_id][$row->status] = $row->total;
+    foreach ($divisionData as $row) {
+        $divisionMatrix[$row->division_id][$row->status] = $row->total;
     }
 
-    // Normalize department matrix
-    foreach ($departments as $dept) {
-        foreach ($statuses as $status) {
-            $departmentMatrix[$dept->id][$status] =
-                $departmentMatrix[$dept->id][$status] ?? 0;
+    foreach ($divisions as $division) {
+        foreach ($matrixSlugs as $status) {
+            $divisionMatrix[$division->id][$status] =
+                $divisionMatrix[$division->id][$status] ?? 0;
         }
     }
 
@@ -158,51 +186,87 @@ class SupportTicketDashboardController extends Controller
     // TICKETS LIST (5 on screen, all filtered records for PDF)
     // =========================
     $tickets = (clone $baseQuery)
-        ->with(['branch', 'department'])
+        ->with(['branch', 'division', 'creator'])
         ->latest()
-        ->limit(5)
+        ->limit(8)
         ->get();
 
-    // =========================
-    // STATUS CHART (fixed statuses only; excludes WIP, in purchase, reopen, etc.)
-    // =========================
-    $statusData = collect([
-        'Open Tickets'       => (int) ($statusCounts['open'] ?? 0),
-        'Accepted Tickets'   => (int) ($statusCounts['accepted'] ?? 0),
-        'Work In Progress'   => (int) ($statusCounts['work_in_progress'] ?? 0),
-        'On Hold Tickets'    => (int) ($statusCounts['hold'] ?? 0),
-        'Completed Tickets'  => (int) ($statusCounts['completed'] ?? 0),
-        'Closed Tickets'     => (int) ($statusCounts['closed'] ?? 0),
-        'Rejected Tickets'   => (int) ($statusCounts['rejected'] ?? 0),
+    $summaryCards = collect([
+        ['label' => 'Total Tickets', 'count' => (int) $dashboard['total_count'], 'stat_class' => 'stat-dark'],
+        ['label' => 'Open Tickets', 'count' => (int) ($statusCounts['open'] ?? 0), 'stat_class' => 'stat-warning'],
+        ['label' => 'Accepted Tickets', 'count' => (int) ($statusCounts['accepted'] ?? 0), 'stat_class' => 'stat-secondary'],
     ]);
+
+    foreach ($statusData->where('kind', 'progress') as $item) {
+        $summaryCards->push([
+            'label' => $item['label'],
+            'count' => $item['count'],
+            'stat_class' => match ($item['slug']) {
+                'work_in_progress' => 'stat-primary',
+                'hold' => 'stat-info',
+                'in_purchase' => 'stat-secondary',
+                default => 'stat-primary',
+            },
+        ]);
+    }
+
+    $summaryCards->push(
+        ['label' => 'Completed Tickets', 'count' => (int) ($statusCounts['completed'] ?? 0), 'stat_class' => 'stat-success'],
+        ['label' => 'Closed Tickets', 'count' => (int) ($statusCounts['closed'] ?? 0), 'stat_class' => 'stat-teal'],
+        ['label' => 'Rejected Tickets', 'count' => (int) ($statusCounts['rejected'] ?? 0), 'stat_class' => 'stat-danger'],
+    );
+
+    $summaryCardRows = $summaryCards->chunk(4);
 
     $viewData = compact(
         'companies',
         'branches',
-        'departments',
+        'divisions',
         'collaboratorUsers',
         'dashboard',
-        'departmentMatrix',
+        'divisionMatrix',
         'tickets',
-        'statusData'
+        'statusData',
+        'matrixStatuses',
+        'summaryCardRows'
     );
 
-    if ($request->input('export_format') === 'pdf') {
-        $pdfTickets = (clone $baseQuery)
-            ->with(['branch', 'department'])
+    if (in_array($request->input('export_format'), ['pdf', 'excel'], true)) {
+        $exportTickets = (clone $baseQuery)
+            ->with(['branch', 'division', 'creator'])
             ->latest()
             ->get();
+
+        $divisionsWithTickets = $divisions->filter(function ($division) use ($divisionMatrix) {
+            return collect($divisionMatrix[$division->id] ?? [])->sum() > 0;
+        })->values();
+
+        if ($request->input('export_format') === 'excel') {
+            return Excel::download(
+                new SupportTicketDashboardExport([
+                    'summaryCards' => $summaryCards,
+                    'matrixStatuses' => $matrixStatuses,
+                    'priorityMatrix' => $dashboard['priorityMatrix'],
+                    'divisions' => $divisions,
+                    'divisionMatrix' => $divisionMatrix,
+                    'tickets' => $exportTickets,
+                    'filters' => $this->buildFilterSummary($request),
+                ]),
+                'support-ticket-dashboard-'.now()->format('Y-m-d').'.xlsx'
+            );
+        }
 
         $statusChartSlices = $this->buildStatusChartSlices($statusData);
 
         return app(ReportPdfExportService::class)->download(
             'dashboard.exports.support-ticket-dashboard-pdf',
             array_merge($viewData, [
-                'tickets' => $pdfTickets,
+                'tickets' => $exportTickets,
+                'divisionsWithTickets' => $divisionsWithTickets,
                 'filterSummary' => $this->buildFilterSummary($request),
                 'statusChartSlices' => $statusChartSlices,
                 'statusChartImage' => $this->buildStatusChartImageBase64($statusChartSlices),
-                'totalTickets' => $pdfTickets->count(),
+                'totalTickets' => $exportTickets->count(),
             ]),
             'support-ticket-dashboard-'.now()->format('Y-m-d').'.pdf',
             'landscape'
@@ -224,8 +288,8 @@ class SupportTicketDashboardController extends Controller
             $summary['Branch'] = Branch::find($request->branch_id)?->name ?? '-';
         }
 
-        if ($request->filled('department_id')) {
-            $summary['Department'] = Department::find($request->department_id)?->department_name ?? '-';
+        if ($request->filled('division_id')) {
+            $summary['Division'] = Division::find($request->division_id)?->division_name ?? '-';
         }
 
         if ($request->filled('collaborator_id')) {
@@ -246,8 +310,7 @@ class SupportTicketDashboardController extends Controller
     /** @return array<int, array{label: string, value: int, color: string, path: string, percent: float}> */
     protected function buildStatusChartSlices(\Illuminate\Support\Collection $statusData): array
     {
-        $colors = ['#ffab00', '#8592a3', '#03c3ec', '#696cff', '#71dd37'];
-        $total = (int) $statusData->sum();
+        $total = (int) $statusData->sum('count');
 
         if ($total <= 0) {
             return [];
@@ -258,14 +321,12 @@ class SupportTicketDashboardController extends Controller
         $radius = 90;
         $startAngle = 0.0;
         $slices = [];
-        $colorIndex = 0;
 
-        foreach ($statusData as $label => $value) {
-            $value = (int) $value;
+        foreach ($statusData as $item) {
+            $value = (int) ($item['count'] ?? 0);
             $sliceFraction = $value / $total;
 
             if ($value <= 0 || $sliceFraction <= 0) {
-                $colorIndex++;
                 continue;
             }
 
@@ -273,15 +334,14 @@ class SupportTicketDashboardController extends Controller
             $endAngle = $startAngle + $sliceAngle;
 
             $slices[] = [
-                'label' => (string) $label,
+                'label' => (string) ($item['label'] ?? ''),
                 'value' => $value,
-                'color' => $colors[$colorIndex % count($colors)],
+                'color' => (string) ($item['color'] ?? '#999999'),
                 'path' => $this->pieSlicePath($cx, $cy, $radius, $startAngle, $endAngle),
                 'percent' => round($sliceFraction * 100, 1),
             ];
 
             $startAngle = $endAngle;
-            $colorIndex++;
         }
 
         return $slices;

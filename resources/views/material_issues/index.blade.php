@@ -133,16 +133,17 @@
                 <thead>
                     <tr>
                         <th>#</th>
+                        <th class="text-center">Actions</th>
                         <th>MI No</th>
                         <th>Issue Date</th>
                         <th>MR No</th>
+                        <th>Company</th>
                         <th>Branch</th>
                         <th>Item Code</th>
                         <th>Item Name</th>
                         <th>Unit</th>
                         <th class="text-end">Issue Qty</th>
                         <th>Status</th>
-                        <th class="text-center">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -153,9 +154,29 @@
                         @endphp
                         <tr>
                             <td>{{ ($items->currentPage() - 1) * $items->perPage() + $loop->iteration }}</td>
+                            <td class="text-center">
+                                @if($mi)
+                                <div class="dropdown">
+                                    <button type="button" class="btn btn-sm btn-icon btn-outline-secondary dropdown-toggle hide-arrow"
+                                            data-bs-toggle="dropdown" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false">
+                                        <i class="bx bx-dots-vertical-rounded"></i>
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        @can('material_issues:view')
+                                        <li>
+                                            <a class="dropdown-item" href="{{ route('material-issues.show', $mi->id) }}">
+                                                <i class="bx bx-show me-1 text-info"></i> View
+                                            </a>
+                                        </li>
+                                        @endcan
+                                    </ul>
+                                </div>
+                                @endif
+                            </td>
                             <td><strong>{{ $mi?->mi_number ?? '--' }}</strong></td>
                             <td>{{ $mi?->issue_date ? \Illuminate\Support\Carbon::parse($mi->issue_date)->format('d-m-Y') : '--' }}</td>
                             <td>{{ $mr?->mr_number ?? 'N/A' }}</td>
+                            <td>{{ $mr?->company?->name ?? $mr?->branch?->company?->name ?? 'N/A' }}</td>
                             <td>{{ $mr?->branch?->name ?? 'N/A' }}</td>
                             <td>{{ $item->itemMaster?->item_code ?? '--' }}</td>
                             <td>{{ $item->itemMaster?->item_name ?? '--' }}</td>
@@ -168,29 +189,10 @@
                                     --
                                 @endif
                             </td>
-                            <td class="text-center">
-                                @if($mi)
-                                <div class="dropdown">
-                                    <button type="button" class="btn btn-sm btn-icon btn-outline-secondary dropdown-toggle hide-arrow"
-                                            data-bs-toggle="dropdown" aria-expanded="false">
-                                        <i class="bx bx-dots-vertical-rounded"></i>
-                                    </button>
-                                    <ul class="dropdown-menu dropdown-menu-end">
-                                        @can('material_issues:view')
-                                        <li>
-                                            <a class="dropdown-item" href="{{ route('material-issues.show', $mi->id) }}">
-                                                <i class="bx bx-show me-1 text-info"></i> View
-                                            </a>
-                                        </li>
-                                        @endcan
-                                    </ul>
-                                </div>
-                                @endif
-                            </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="11" class="text-center py-4 text-muted">No material issue items found.</td>
+                            <td colspan="12" class="text-center py-4 text-muted">No material issue items found.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -207,34 +209,28 @@
                 <thead>
                     <tr>
                         <th>S.No</th>
+                        <th>Actions</th>
                         <th>MI No</th>
                         <th>Issue Date</th>
+                        <th>Company</th>
                         <th>Branch</th>
                         <th>Department</th>
                         <th>Employee</th>
                         <th>MR No</th>
                         <th>Status</th>
-                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse ($issues as $mi)
                     <tr>
                         <td>{{ ($issues->currentPage() - 1) * $issues->perPage() + $loop->iteration }}</td>
-                        <td><strong>{{ $mi->mi_number }}</strong></td>
-                        <td>{{ $mi->issue_date ? \Illuminate\Support\Carbon::parse($mi->issue_date)->format('d-m-Y') : '--' }}</td>
-                        <td>{{ $mi->materialRequest->branch->name ?? 'N/A' }}</td>
-                        <td>{{ $mi->department->department_name ?? 'N/A' }}</td>
-                        <td>{{ $mi->employee->employee_name ?? 'N/A' }}</td>
-                        <td>{{ $mi->materialRequest->mr_number ?? 'N/A' }}</td>
-                        <td>@include('material_issues._status-badge', ['status' => $mi->status])</td>
                         <td>
                             <div class="dropdown">
                                 <button type="button" class="btn btn-sm btn-icon btn-outline-secondary dropdown-toggle hide-arrow"
-                                        data-bs-toggle="dropdown" aria-expanded="false">
+                                        data-bs-toggle="dropdown" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false">
                                     <i class="bx bx-dots-vertical-rounded"></i>
                                 </button>
-                                <ul class="dropdown-menu dropdown-menu-end">
+                                <ul class="dropdown-menu">
                                     @can('material_issues:view')
                                     <li>
                                         <a class="dropdown-item" href="{{ route('material-issues.show', $mi->id) }}">
@@ -255,10 +251,18 @@
                                 </ul>
                             </div>
                         </td>
+                        <td><strong>{{ $mi->mi_number }}</strong></td>
+                        <td>{{ $mi->issue_date ? \Illuminate\Support\Carbon::parse($mi->issue_date)->format('d-m-Y') : '--' }}</td>
+                        <td>{{ $mi->materialRequest?->company?->name ?? $mi->materialRequest?->branch?->company?->name ?? 'N/A' }}</td>
+                        <td>{{ $mi->materialRequest->branch->name ?? 'N/A' }}</td>
+                        <td>{{ $mi->department->department_name ?? 'N/A' }}</td>
+                        <td>{{ $mi->employee->employee_name ?? 'N/A' }}</td>
+                        <td>{{ $mi->materialRequest->mr_number ?? 'N/A' }}</td>
+                        <td>@include('material_issues._status-badge', ['status' => $mi->status])</td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="9" class="text-center">No material issues found.</td>
+                        <td colspan="10" class="text-center">No material issues found.</td>
                     </tr>
                     @endforelse
                 </tbody>

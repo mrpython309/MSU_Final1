@@ -15,6 +15,7 @@ use App\Models\MsuPurchaseOrder;
 use App\Models\MsuStockMovement;
 use App\Models\MsuWorkOrder;
 use App\Services\ReportPdfExportService;
+use App\Support\DashboardLanding;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -24,6 +25,21 @@ class Analytics extends Controller
 {
     public function index(Request $request)
     {
+        if ($redirect = DashboardLanding::redirectIfNotHome($request->user())) {
+            return $redirect;
+        }
+
+        $user = $request->user();
+        $allowed = false;
+
+        try {
+            $allowed = (bool) ($user && ($user->hasAnyRole(['superadmin', 'Super Admin']) || $user->can('dashboard:view')));
+        } catch (\Throwable) {
+            $allowed = (bool) ($user && $user->can('dashboard:view'));
+        }
+
+        abort_unless($allowed, 403, 'Unauthorized action.');
+
         return view('content.dashboard.dashboards-analytics', $this->dashboardData($request));
     }
 

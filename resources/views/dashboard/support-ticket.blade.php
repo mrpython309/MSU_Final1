@@ -214,6 +214,26 @@
     .card-rejected .card-title-text { color: #b27563; }
     .card-rejected .card-value-num { color: #7B2612; }
 
+    .card-purchase {
+        background: linear-gradient(135deg, #f4f1f8 0%, #e4dced 100%);
+    }
+    .card-purchase .card-icon-wrap {
+        background: linear-gradient(135deg, #7C6A9A 0%, #3D3354 100%);
+        color: #ffffff;
+    }
+    .card-purchase .card-title-text { color: #6d5d86; }
+    .card-purchase .card-value-num { color: #3D3354; }
+
+    .card-custom {
+        background: linear-gradient(135deg, #f7f7f8 0%, #ececef 100%);
+    }
+    .card-custom .card-icon-wrap {
+        background: var(--status-color, #6B8BA4);
+        color: #ffffff;
+    }
+    .card-custom .card-title-text { color: #5c6c75; }
+    .card-custom .card-value-num { color: #2F3E46; }
+
     /* 3D Matrices Cards & Tables */
     .ticket-matrix-card {
         background: #ffffff;
@@ -240,6 +260,13 @@
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+    }
+    .recent-ticket-subject {
+        max-width: 16rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: block;
     }
     .invoice-list-table {
         border-collapse: separate;
@@ -353,13 +380,13 @@
                 @error('branch_id')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
             </div>
             <div class="support-ticket-filters__field">
-                <label for="department_id" class="form-label">Department</label>
-                <select name="department_id" id="department_id" class="form-select form-select-sm">
-                    <option value="">All Departments</option>
-                    @foreach($departments as $department)
-                        <option value="{{ $department->id }}"
-                            {{ request('department_id') == $department->id ? 'selected' : '' }}>
-                            {{ $department->department_name }}
+                <label for="division_id" class="form-label">Division</label>
+                <select name="division_id" id="division_id" class="form-select form-select-sm">
+                    <option value="">All Divisions</option>
+                    @foreach($divisions as $division)
+                        <option value="{{ $division->id }}"
+                            {{ request('division_id') == $division->id ? 'selected' : '' }}>
+                            {{ $division->division_name }}
                         </option>
                     @endforeach
                 </select>
@@ -387,6 +414,7 @@
             <div class="support-ticket-filters__actions d-flex flex-wrap align-items-end gap-2 pt-1 pt-md-0 ms-md-auto">
                 <button type="submit" id="goBtn" class="btn btn-sm btn-primary">GO</button>
                 <button type="button" id="clearFilterBtn" class="btn btn-sm btn-outline-secondary">Clear</button>
+                <button type="button" id="downloadExcelBtn" class="btn btn-sm btn-success">Excel</button>
                 <button type="button" id="downloadPdfBtn" class="btn btn-sm btn-danger">PDF</button>
             </div>
         </div>
@@ -449,38 +477,21 @@
                     </a>
                 </div>
 
+                                @foreach($statusData->where('kind', 'progress') as $status)
                 <div class="col-sm-6 col-md-3">
-                    <a href="{{ route('support-ticket.index', array_merge(request()->query(), ['status' => 'work_in_progress'])) }}" class="text-reset text-decoration-none">
-                        <div class="ticket-status-card card-wip">
+                    <a href="{{ route('support-ticket.index', array_merge(request()->query(), ['status' => $status['slug']])) }}" class="text-reset text-decoration-none">
+                        <div class="ticket-status-card {{ $status['card_class'] }}" @if($status['card_class'] === 'card-custom') style="--status-color: {{ $status['color'] }}" @endif>
                             <div class="card-icon-wrap">
-                                <i class="icon-base bx bx-cog icon-md" style="font-size: 1.8rem;"></i>
+                                <i class="icon-base bx {{ $status['slug'] === 'hold' ? 'bx-pause-circle' : ($status['slug'] === 'in_purchase' ? 'bx-cart' : 'bx-cog') }} icon-md" style="font-size: 1.8rem;"></i>
                             </div>
                             <div class="card-content-wrap">
-                                <span class="card-title-text">Work In Progress</span>
-                                <span class="card-value-num">{{ $dashboard['wip_count'] ?? 0 }}</span>
+                                <span class="card-title-text">{{ $status['label'] }}</span>
+                                <span class="card-value-num">{{ $status['count'] }}</span>
                             </div>
                         </div>
                     </a>
                 </div>
-            </div>
-
-            <!-- Row 2: 4 cards -->
-            <div class="row g-4">
-                <div class="col-sm-6 col-md-3">
-                    <a href="{{ route('support-ticket.index', array_merge(request()->query(), ['status' => 'hold'])) }}" class="text-reset text-decoration-none">
-                        <div class="ticket-status-card card-hold">
-                            <div class="card-icon-wrap">
-                                <svg width="24" height="24" viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path fill-rule="evenodd" clip-rule="evenodd" d="M25.1509 6.46609C23.2675 5.17419 21.0251 4.50807 18.7418 4.5622L18.7411 4.56221C18.4983 4.56781 18.2574 4.58151 18.0187 4.60305L18.6951 2.56275C21.398 2.49881 24.0526 3.28743 26.2822 4.8168C28.512 6.34629 30.2037 8.53899 31.1173 11.0839C32.031 13.6289 32.1201 16.3969 31.3722 18.9954C30.6243 21.5938 29.0772 23.8909 26.9505 25.5607L26.9445 25.5654L26.9445 25.5654C26.6318 25.8071 26.3785 26.1171 26.204 26.4717C26.0295 26.8263 25.9384 27.2161 25.9376 27.6113V28.5C25.9376 29.0801 25.7072 29.6365 25.2969 30.0468C24.8867 30.457 24.3303 30.6875 23.7501 30.6875H14.2501C13.67 30.6875 13.1136 30.457 12.7033 30.0468C12.2931 29.6365 12.0626 29.0801 12.0626 28.5V27.6131C12.0595 27.2206 11.9683 26.8339 11.7957 26.4815C11.6232 26.1289 11.3737 25.8196 11.0656 25.5764L11.7414 23.5378C11.9208 23.6976 12.1057 23.8517 12.296 23.9996L11.6821 24.7891L12.301 24.0035C12.8459 24.4328 13.2871 24.9792 13.5921 25.6022C13.8971 26.2252 14.0579 26.9089 14.0626 27.6025L14.0627 27.6094L14.0626 28.5C14.0626 28.5497 14.0824 28.5974 14.1175 28.6326C14.1527 28.6677 14.2004 28.6875 14.2501 28.6875H23.7501C23.7999 28.6875 23.8475 28.6677 23.8827 28.6326C23.9179 28.5974 23.9376 28.5497 23.9376 28.5V27.6094L23.9376 27.6074C23.939 26.9073 24.1004 26.2167 24.4096 25.5885C24.7181 24.9616 25.1657 24.4133 25.7181 23.9855C27.5131 22.5752 28.8188 20.6359 29.4502 18.4422C30.082 16.2473 30.0067 13.9093 29.235 11.7597C28.4633 9.61009 27.0344 7.75799 25.1509 6.46609ZM11.7414 23.5378L11.7414 23.5378L18.0187 4.60305L18.018 4.6031L18.6944 2.56276C11.7043 2.72418 6.09331 8.53234 6.12513 15.5156C6.13159 17.458 6.57998 19.3733 7.43632 21.1167C8.29225 22.8593 9.53332 24.3843 11.0656 25.5764L11.7414 23.5378ZM11.7414 23.5378C10.7009 22.6109 9.84781 21.4898 9.23145 20.235C8.50882 18.7638 8.13049 17.1475 8.12512 15.5084L8.12512 15.5071C8.09905 9.84987 12.4637 5.10456 18.018 4.6031L11.7414 23.5378ZM12.0627 34.4375C12.0627 33.8852 12.5104 33.4375 13.0627 33.4375H24.9377C25.49 33.4375 25.9377 33.8852 25.9377 34.4375C25.9377 34.9898 25.49 35.4375 24.9377 35.4375H13.0627C12.5104 35.4375 12.0627 34.9898 12.0627 34.4375ZM20.3697 7.44532C19.8252 7.35302 19.3089 7.71961 19.2166 8.26412C19.1243 8.80864 19.4909 9.32489 20.0354 9.41719C21.2827 9.62862 22.4336 10.222 23.3292 11.1154C24.2249 12.0087 24.8212 13.1581 25.0358 14.4048C25.1295 14.9491 25.6467 15.3144 26.191 15.2207C26.7353 15.127 27.1005 14.6098 27.0068 14.0655C26.722 12.4107 25.9305 10.8851 24.7417 9.69934C23.5528 8.51353 22.0252 7.72596 20.3697 7.44532ZM12.0627 34.4375H25.9377V35.4375H12.0627V34.4375Z" fill="currentColor"></path>
-                                </svg>
-                            </div>
-                            <div class="card-content-wrap">
-                                <span class="card-title-text">On Hold Tickets</span>
-                                <span class="card-value-num">{{ $dashboard['on_hold_count'] ?? 0 }}</span>
-                            </div>
-                        </div>
-                    </a>
-                </div>
+                @endforeach
 
                 <div class="col-sm-6 col-md-3">
                     <a href="{{ route('support-ticket.index', array_merge(request()->query(), ['status' => 'completed'])) }}" class="text-reset text-decoration-none">
@@ -544,20 +555,18 @@
           <thead>
             <tr>
               <th><span class="badge bg-label-secondary">Priority</span></th>
-              <th><span class="badge bg-label-warning">  Open </span></th>
-              <th><span class="badge bg-label-info">On hold</span></th>
-              <th><span class="badge bg-label-primary">Completed</span></th>
-              <th><span class="badge bg-label-success">Closed</span></th>
+              @foreach($matrixStatuses as $status)
+              <th><span class="badge {{ \App\Models\SupportTicketProgressStatus::matrixBadgeClass($status['slug']) }}">{{ $status['short'] }}</span></th>
+              @endforeach
             </tr>
           </thead>
           <tbody>
               @foreach (['high' => 'High', 'normal' => 'Medium', 'low' => 'Low'] as $key => $label)
             <tr>
                 <td class="fw-medium">{{ $label }}</td>
-                <td align="center">{{ $dashboard['priorityMatrix'][$key]['open'] ?? 0 }}</td>
-                <td align="center">{{ $dashboard['priorityMatrix'][$key]['hold'] ?? 0 }}</td>
-                <td align="center">{{ $dashboard['priorityMatrix'][$key]['completed'] ?? 0 }}</td>
-                <td align="center">{{ $dashboard['priorityMatrix'][$key]['closed'] ?? 0 }}</td>
+                @foreach($matrixStatuses as $status)
+                <td align="center">{{ $dashboard['priorityMatrix'][$key][$status['slug']] ?? 0 }}</td>
+                @endforeach
             </tr>
         @endforeach
           </tbody>
@@ -577,52 +586,41 @@
 
         <div class="card ticket-matrix-card">
       <div class="card-header d-flex align-items-center justify-content-between">
-        <h5 class="card-title m-0 me-2">Tickets by Departments</h5>
+        <h5 class="card-title m-0 me-2">Tickets by Divisions</h5>
        
       </div>
       <div class="card-datatable table-responsive dept-table-scroll">
         <table class="invoice-list-table table table-border-top-0">
           <thead>
             <tr>
-              <th><span class="badge bg-label-secondary">Department</span></th>
-              <th><span class="badge bg-label-warning">  Open </span></th>
-              <th><span class="badge bg-label-info">On hold</span></th>
-              <th><span class="badge bg-label-primary">Completed</span></th>
-              <th><span class="badge bg-label-success">Closed</span></th>
+              <th><span class="badge bg-label-secondary">Division</span></th>
+              @foreach($matrixStatuses as $status)
+              <th><span class="badge {{ \App\Models\SupportTicketProgressStatus::matrixBadgeClass($status['slug']) }}">{{ $status['short'] }}</span></th>
+              @endforeach
             </tr>
           </thead>
           <tbody>
             @php
-                $departmentsWithTickets = $departments->filter(function ($department) use ($departmentMatrix) {
-                    return collect($departmentMatrix[$department->id] ?? [])->sum() > 0;
+                $divisionsWithTickets = $divisions->filter(function ($division) use ($divisionMatrix) {
+                    return collect($divisionMatrix[$division->id] ?? [])->sum() > 0;
                 });
             @endphp
-            @forelse ($departmentsWithTickets as $department)
+            @forelse ($divisionsWithTickets as $division)
                     <tr>
-                        <td class="fw-medium dept-name-cell" title="{{ $department->department_name }}">
-                            {{ $department->department_name }}
+                        <td class="fw-medium dept-name-cell" title="{{ $division->division_name }}">
+                            {{ $division->division_name }}
                         </td>
 
+                        @foreach($matrixStatuses as $status)
                         <td align="center">
-                            {{ $departmentMatrix[$department->id]['open'] ?? 0 }}
+                            {{ $divisionMatrix[$division->id][$status['slug']] ?? 0 }}
                         </td>
-
-                        <td align="center">
-                            {{ $departmentMatrix[$department->id]['hold'] ?? 0 }}
-                        </td>
-
-                        <td align="center">
-                            {{ $departmentMatrix[$department->id]['completed'] ?? 0 }}
-                        </td>
-
-                        <td align="center">
-                            {{ $departmentMatrix[$department->id]['closed'] ?? 0 }}
-                        </td>
+                        @endforeach
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="5" class="text-center">
-                            No tickets in any department
+                        <td colspan="{{ $matrixStatuses->count() + 1 }}" class="text-center">
+                            No tickets in any division
                         </td>
                     </tr>
                 @endforelse
@@ -632,6 +630,51 @@
         </table>
       </div>
     </div>
+
+        <div class="card ticket-matrix-card mt-4">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <h5 class="card-title m-0 me-2">Recent Support Tickets</h5>
+                <a href="{{ route('support-ticket.index', request()->except('export_format')) }}" class="btn btn-sm btn-outline-primary">View all</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead>
+                        <tr>
+                            <th>Ticket</th>
+                            <th>Priority</th>
+                            <th>Status</th>
+                            <th>Due</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($tickets as $ticket)
+                        <tr>
+                            <td>
+                                <a href="{{ route('support-ticket.show', $ticket->id) }}" class="fw-medium text-body recent-ticket-subject">
+                                    {{ $ticket->displayTicketNumber() }} {{ $ticket->subject }}
+                                </a>
+                                <small class="text-muted d-block">
+                                    {{ $ticket->branch?->name ?? 'No branch' }}
+                                    · {{ $ticket->division?->division_name ?? 'No division' }}
+                                </small>
+                                <small class="text-muted d-block">
+                                    {{ $ticket->creator?->name ?? 'Unknown' }}
+                                    · {{ $ticket->created_at?->format('d M Y') }}
+                                </small>
+                            </td>
+                            <td>{!! $ticket->priority_label !!}</td>
+                            <td>{!! $ticket->status_label !!}</td>
+                            <td class="text-nowrap">{{ $ticket->due_date?->format('d M Y') ?? '-' }}</td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-4">No tickets found</td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
      </div>
 
@@ -655,18 +698,10 @@
     new Chart(ctx, {
         type: 'pie',
         data: {
-            labels: {!! json_encode($statusData->keys()) !!},
+            labels: @json($statusData->pluck('label')->values()),
             datasets: [{
-                data: {!! json_encode($statusData->values()) !!},
-                backgroundColor: [
-                    '#DDA15E', // Open (Muted Ochre)
-                    '#A3B19B', // Accepted (Sage Green)
-                    '#6B8BA4', // Work In Progress (English Navy)
-                    '#A8DADC', // On Hold (Duck Egg Blue)
-                    '#819864', // Completed (Forest Green)
-                    '#E0A899', // Closed (Dusty Rose)
-                    '#C15C3D'  // Rejected (Terracotta Red)
-                ],
+                data: @json($statusData->pluck('count')->values()),
+                backgroundColor: @json($statusData->pluck('color')->values()),
                 borderWidth: 1
             }]
         },
@@ -732,7 +767,7 @@
 
             $.get(
                 "{{ route('ajax.getusers.bybranch', ':id') }}".replace(':id', branchId),
-                { for_filter: 1, department_id: $('#department_id').val() || '' },
+                { for_filter: 1, division_id: $('#division_id').val() || '' },
                 function (res) {
                     collaboratorDropdown.empty().append('<option value="">All Collaborators</option>');
 
@@ -759,7 +794,7 @@
             loadCollaborators(this.value);
         });
 
-        $('#department_id').on('change', function () {
+        $('#division_id').on('change', function () {
             if ($('#branch_id').val()) {
                 loadCollaborators($('#branch_id').val(), "{{ request('collaborator_id') }}");
             }
@@ -773,17 +808,26 @@
             window.location.href = "{{ route('dashboard.supportticket') }}";
         });
 
-        $('#downloadPdfBtn').on('click', function (e) {
-            e.preventDefault();
+        function submitDashboardExport(format) {
             const form = document.getElementById('supportTicketFilterForm');
             const exportFormat = document.getElementById('export_format');
             if (!form || !exportFormat) {
                 return;
             }
 
-            exportFormat.value = 'pdf';
+            exportFormat.value = format;
             form.submit();
             exportFormat.value = '';
+        }
+
+        $('#downloadPdfBtn').on('click', function (e) {
+            e.preventDefault();
+            submitDashboardExport('pdf');
+        });
+
+        $('#downloadExcelBtn').on('click', function (e) {
+            e.preventDefault();
+            submitDashboardExport('excel');
         });
 
         $('#goBtn').on('click', function () {

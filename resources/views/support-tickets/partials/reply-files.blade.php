@@ -1,23 +1,40 @@
 @php
     $attachmentFilenames = $stCommand->attachment_filenames;
     $attachmentUrls = $stCommand->attachment_urls;
-@endphp
+    $imageExtensions = ['png', 'jpe', 'jpeg', 'jpg', 'gif', 'bmp', 'ico', 'tif', 'svg', 'svgz', 'webp'];
+    $images = [];
+    $files = [];
 
-@foreach($attachmentFilenames as $index => $filename)
-    @php
+    foreach ($attachmentFilenames as $index => $filename) {
         $fileUrl = $attachmentUrls[$index] ?? '';
         $fileExt = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
-        $imageExtensions = ['png', 'jpe', 'jpeg', 'jpg', 'gif', 'bmp', 'ico', 'tif', 'svg', 'svgz', 'webp'];
-    @endphp
+        $item = ['name' => $filename, 'url' => $fileUrl];
 
-    <div class="mb-2">
-        @if(in_array($fileExt, $imageExtensions, true))
-            <a href="{{ $fileUrl }}" data-lightbox="reply-gallery-{{ $stCommand->id }}">
-                <img src="{{ $fileUrl }}" class="d-block w-px-100 h-px-100 rounded mb-2" alt="Reply attachment">
+        if (in_array($fileExt, $imageExtensions, true)) {
+            $images[] = $item;
+        } else {
+            $files[] = $item;
+        }
+    }
+@endphp
+
+@if($images !== [])
+    <div class="ticket-post__images">
+        @foreach($images as $image)
+            <a href="{{ $image['url'] }}" data-lightbox="reply-gallery-{{ $stCommand->id }}" data-title="{{ $image['name'] }}">
+                <img src="{{ $image['url'] }}" alt="{{ $image['name'] }}">
             </a>
-        @endif
-        <a href="{{ $fileUrl }}" download class="btn btn-sm btn-outline-primary">
-            Download Attachment{{ count($attachmentFilenames) > 1 ? ' '.$loop->iteration : '' }}
-        </a>
+        @endforeach
     </div>
-@endforeach
+@endif
+
+@if($files !== [])
+    <div class="ticket-post__files">
+        @foreach($files as $file)
+            <a class="ticket-file" href="{{ $file['url'] }}" download="{{ $file['name'] }}">
+                <i class="bx bx-file"></i>
+                <span>{{ $file['name'] }}</span>
+            </a>
+        @endforeach
+    </div>
+@endif

@@ -67,16 +67,16 @@
                     </div>
 
                     <div class="col-md-4 mb-3">
-                        <label class="form-label">Emp Code *</label>
+                        <label class="form-label">Emp Code</label>
                         <input type="text" name="emp_code" class="form-control @error('emp_code') is-invalid @enderror"
-                            value="{{ old('emp_code', $employee->emp_code) }}" required>
+                            value="{{ old('emp_code', $employee->emp_code) }}">
                         @error('emp_code') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
 
                     <div class="col-md-4 mb-3">
-                        <label class="form-label">Date of Joining *</label>
+                        <label class="form-label">Date of Joining</label>
                         <input type="date" name="date_of_joining" class="form-control"
-                            value="{{ old('date_of_joining', date('Y-m-d',strtotime($employee->date_of_joining))) }}" required>
+                            value="{{ old('date_of_joining', optional($employee->date_of_joining)->format('Y-m-d')) }}">
                     </div>
 
                     <div class="col-md-4 mb-3">
@@ -92,16 +92,17 @@
                     </div>
 
                     <div class="col-md-4 mb-3">
-                        <label class="form-label">Designation *</label>
-                        <select name="designation_id" class="form-select" required>
-                            <option value="">Select</option>
-                            @foreach($designations as $designation)
-                                <option value="{{ $designation->id }}"
-                                    {{ old('designation_id', $employee->designation_id) == $designation->id ? 'selected' : '' }}>
-                                    {{ $designation->designation_name }}
+                        <label class="form-label">Division</label>
+                        <select name="division_id" class="form-select @error('division_id') is-invalid @enderror">
+                            <option value="">Select Division</option>
+                            @foreach($divisions as $division)
+                                <option value="{{ $division->id }}"
+                                    {{ old('division_id', $employee->division_id) == $division->id ? 'selected' : '' }}>
+                                    {{ $division->division_name }}
                                 </option>
                             @endforeach
                         </select>
+                        @error('division_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
 
                 </div>
@@ -198,8 +199,8 @@
                     </div>
 
                      <div class="col-md-4 mb-3">
-                        <label class="form-label">  Departments <span class="text-danger">*</span> </label>
-                        <select name="department_id[]" id="department_id" multiple class="form-select select2 @error('department_id') is-invalid @enderror" required>
+                        <label class="form-label">Departments</label>
+                        <select name="department_id[]" id="department_id" multiple class="form-select select2 @error('department_id') is-invalid @enderror">
                             <option value="">Select Department</option>    
                             @foreach ($departments as $department)
                               <option value="{{$department->id}}" {{ in_array($department->id, old('department_id', $employee->departments->pluck('id')->toArray())) ? 'selected' : ''}} >{{$department->department_name}}</option>  

@@ -134,6 +134,7 @@
                 <thead>
                     <tr>
                         <th style="width:60px">#</th>
+                        <th class="text-center" style="width:80px">Actions</th>
                         <th>PO Number</th>
                         <th>PO Date</th>
                         <th>Vendor</th>
@@ -146,7 +147,6 @@
                         <th class="text-end">Tax %</th>
                         <th class="text-end">Tax Value</th>
                         <th class="text-end">Net Value</th>
-                        <th class="text-center" style="width:80px">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -154,26 +154,14 @@
                         @php $po = $item->purchaseOrder; @endphp
                         <tr>
                             <td class="text-muted">{{ ($items->currentPage() - 1) * $items->perPage() + $loop->iteration }}</td>
-                            <td><strong>{{ $po?->po_number ?? '--' }}</strong></td>
-                            <td>{{ $po?->po_date?->format('d-m-Y') ?? '--' }}</td>
-                            <td>{{ $po?->vendor?->name ?? '--' }}</td>
-                            <td>{{ $item->item_code ?: '--' }}</td>
-                            <td>{{ $item->item_name ?: '--' }}</td>
-                            <td>{{ $item->hsn ?: '--' }}</td>
-                            <td class="text-end">{{ number_format((float) $item->quantity, 3) }}</td>
-                            <td class="text-end">{{ number_format((float) $item->price, 2) }}</td>
-                            <td class="text-end">{{ number_format($item->gross_value, 2) }}</td>
-                            <td class="text-end">{{ number_format((float) $item->tax, 2) }}</td>
-                            <td class="text-end">{{ number_format($item->tax_value, 2) }}</td>
-                            <td class="text-end">{{ number_format((float) $item->net_value, 2) }}</td>
                             <td class="text-center">
                                 @if($po)
                                 <div class="dropdown">
                                     <button type="button" class="btn btn-sm btn-icon btn-outline-secondary dropdown-toggle hide-arrow"
-                                            data-bs-toggle="dropdown" aria-expanded="false">
+                                            data-bs-toggle="dropdown" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false">
                                         <i class="bx bx-dots-vertical-rounded"></i>
                                     </button>
-                                    <ul class="dropdown-menu dropdown-menu-end">
+                                    <ul class="dropdown-menu">
                                         @can('msu-purchase-order:view')
                                         <li>
                                             <a class="dropdown-item" href="{{ route('msu-purchase-orders.show', $po) }}">
@@ -194,6 +182,18 @@
                                 </div>
                                 @endif
                             </td>
+                            <td><strong>{{ $po?->po_number ?? '--' }}</strong></td>
+                            <td>{{ $po?->po_date?->format('d-m-Y') ?? '--' }}</td>
+                            <td>{{ $po?->vendor?->name ?? '--' }}</td>
+                            <td>{{ $item->item_code ?: '--' }}</td>
+                            <td>{{ $item->item_name ?: '--' }}</td>
+                            <td>{{ $item->hsn ?: '--' }}</td>
+                            <td class="text-end">{{ number_format((float) $item->quantity, 3) }}</td>
+                            <td class="text-end">{{ number_format((float) $item->price, 2) }}</td>
+                            <td class="text-end">{{ number_format($item->gross_value, 2) }}</td>
+                            <td class="text-end">{{ number_format((float) $item->tax, 2) }}</td>
+                            <td class="text-end">{{ number_format($item->tax_value, 2) }}</td>
+                            <td class="text-end">{{ number_format((float) $item->net_value, 2) }}</td>
                         </tr>
                     @empty
                         <tr>
@@ -217,6 +217,7 @@
                 <thead>
                     <tr>
                         <th style="width:60px">#</th>
+                        <th class="text-center" style="width:80px">Actions</th>
                         <th>PO Number</th>
                         <th>PO Date</th>
                         <th>Vendor</th>
@@ -225,7 +226,6 @@
                         <th class="text-end">Items</th>
                         <th class="text-end">Grand Total</th>
                         <th>Status</th>
-                        <th class="text-center" style="width:80px">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -234,25 +234,13 @@
                         <td class="text-muted">
                             {{ ($purchaseOrders->currentPage() - 1) * $purchaseOrders->perPage() + $loop->iteration }}
                         </td>
-                        <td><strong>{{ $po->po_number }}</strong></td>
-                        <td>{{ $po->po_date?->format('d-m-Y') }}</td>
-                        <td>{{ $po->vendor?->name ?? '--' }}</td>
-                        <td>{{ $po->branch?->name ?? '--' }}</td>
-                        <td>{{ $po->paymentTerm?->term_name ?? '--' }}</td>
-                        <td class="text-end">{{ $po->items->count() }}</td>
-                        <td class="text-end">{{ number_format((float) $po->grand_total, 2) }}</td>
-                        <td>
-                            <span class="badge bg-label-{{ $po->statusEnum()->badgeClass() }}">
-                                {{ $po->statusEnum()->label() }}
-                            </span>
-                        </td>
                         <td class="text-center">
                             <div class="dropdown">
                                 <button type="button" class="btn btn-sm btn-icon btn-outline-secondary dropdown-toggle hide-arrow"
-                                        data-bs-toggle="dropdown" aria-expanded="false">
+                                        data-bs-toggle="dropdown" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false">
                                     <i class="bx bx-dots-vertical-rounded"></i>
                                 </button>
-                                <ul class="dropdown-menu dropdown-menu-end">
+                                <ul class="dropdown-menu">
                                     @can('msu-purchase-order:view')
                                     <li>
                                         <a class="dropdown-item" href="{{ route('msu-purchase-orders.show', $po) }}">
@@ -317,6 +305,18 @@
                                     @endcan
                                 </ul>
                             </div>
+                        </td>
+                        <td><strong>{{ $po->po_number }}</strong></td>
+                        <td>{{ $po->po_date?->format('d-m-Y') }}</td>
+                        <td>{{ $po->vendor?->name ?? '--' }}</td>
+                        <td>{{ $po->branch?->name ?? '--' }}</td>
+                        <td>{{ $po->paymentTerm?->term_name ?? '--' }}</td>
+                        <td class="text-end">{{ $po->items->count() }}</td>
+                        <td class="text-end">{{ number_format((float) $po->grand_total, 2) }}</td>
+                        <td>
+                            <span class="badge bg-label-{{ $po->statusEnum()->badgeClass() }}">
+                                {{ $po->statusEnum()->label() }}
+                            </span>
                         </td>
                     </tr>
                     @empty

@@ -8,6 +8,7 @@ enum AssetCondition: string
     case GOOD = 'good';
     case FAIR = 'fair';
     case POOR = 'poor';
+    case DISPOSED = 'disposed';
 
     public function label(): string
     {
@@ -16,6 +17,7 @@ enum AssetCondition: string
             self::GOOD => 'Good',
             self::FAIR => 'Fair',
             self::POOR => 'Poor',
+            self::DISPOSED => 'Disposed',
         };
     }
 
@@ -26,6 +28,7 @@ enum AssetCondition: string
             self::GOOD => 'primary',
             self::FAIR => 'warning',
             self::POOR => 'danger',
+            self::DISPOSED => 'danger',
         };
     }
 }

@@ -272,6 +272,7 @@ class RoleController extends Controller
             'cost-centres',
             'designation',
             'department',
+            'division',
             'vendor',
             'asset-master',
             'item-master',
@@ -311,6 +312,10 @@ class RoleController extends Controller
             'material-issue',
             'support-ticket',
             'support-tickets',
+            'audit',
+            'audits',
+            'asset-audit',
+            'asset-audits',
         ];
 
         if (in_array($module, $exact, true)) {
@@ -396,7 +401,10 @@ class RoleController extends Controller
             str_starts_with($module, 'purchase-management') => 'Procurement — Dashboard & Reports',
             str_starts_with($module, 'purchase-report') => 'Procurement — Dashboard & Reports',
             str_starts_with($module, 'approval') => 'Procurement — Approval Templates',
+            str_starts_with($module, 'asset-audit') || str_starts_with($module, 'audit') => 'Asset Audit',
             $module === 'cost-centres' => 'Cost Centres',
+            $module === 'support-ticket' || $module === 'support-tickets' => 'Support Tickets',
+            $module === 'dashboard.supportticket' => 'Support Ticket Dashboard',
             default => ucfirst($module),
         };
     }

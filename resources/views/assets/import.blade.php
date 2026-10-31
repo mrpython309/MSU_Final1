@@ -169,6 +169,7 @@
             <li>good (for Good condition)</li>
             <li>fair (for Fair condition)</li>
             <li>poor (for Poor condition)</li>
+            <li>disposed (for Disposed condition)</li>
         </ul>
 
         <p class="mb-1"><strong>Common Asset Types:</strong></p>

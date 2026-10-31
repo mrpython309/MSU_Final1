@@ -38,7 +38,7 @@ class BranchController extends Controller
     {
         return $exporter->excel(
             $this->branchRows($request),
-            ['S.No', 'Branch Name', 'Code', 'Company', 'City', 'Contact', 'Status'],
+            $this->branchExportHeadings(),
             'branches'
         );
     }
@@ -47,10 +47,29 @@ class BranchController extends Controller
     {
         return $exporter->pdf(
             'Branches',
-            ['S.No', 'Branch Name', 'Code', 'Company', 'City', 'Contact', 'Status'],
+            $this->branchExportHeadings(),
             $this->branchRows($request),
             'branches'
         );
+    }
+
+    private function branchExportHeadings(): array
+    {
+        return [
+            'S.No',
+            'Branch Name',
+            'Branch Code',
+            'Company',
+            'Address',
+            'City',
+            'State',
+            'Country',
+            'Contact Person',
+            'Phone',
+            'Email',
+            'GST',
+            'Status',
+        ];
     }
 
     private function filteredBranches(Request $request): Builder
@@ -75,8 +94,14 @@ class BranchController extends Controller
                 $branch->name,
                 $branch->code,
                 $branch->company?->name,
+                $branch->address,
                 $branch->city,
+                $branch->state,
+                $branch->country,
+                $branch->contact_person,
                 $branch->contact_number,
+                $branch->email,
+                $branch->gst_number,
                 ucfirst((string) $branch->status),
             ]
         );
