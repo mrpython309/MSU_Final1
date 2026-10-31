@@ -14,6 +14,7 @@
 .phpunit.result.cache
 *.pem
 .deploy/
+import_db.sh
 
 docker-compose.override.yml
 
