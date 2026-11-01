@@ -1661,7 +1661,7 @@
     function createCenterTextPlugin(centerValue, centerLabel, gradientStops) {
         return {
             id: 'assetChartCenterText_' + centerLabel.replace(/\s+/g, '_'),
-            afterDraw(chart) {
+            afterDatasetsDraw(chart) {
                 const { ctx: canvasCtx, chartArea } = chart;
                 if (!chartArea) return;
 
@@ -1752,7 +1752,7 @@
                 plugins: {
                     legend: { display: false },
                 tooltip: {
-                        backgroundColor: 'rgba(67, 89, 113, 0.96)',
+                        backgroundColor: 'rgba(30, 41, 59, 0.98)',
                         titleFont: { size: 13, weight: '600' },
                         bodyFont: { size: 12 },
                         padding: 14,
