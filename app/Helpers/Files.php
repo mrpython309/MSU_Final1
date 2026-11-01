@@ -47,6 +47,10 @@ class Files
         $tempPath = public_path(self::UPLOAD_FOLDER . '/temp/' . $newName);
 
         /** Check if folder exits or not. If not then create the folder */
+        if (!File::exists(public_path(self::UPLOAD_FOLDER . '/temp'))) {
+            File::makeDirectory(public_path(self::UPLOAD_FOLDER . '/temp'), 0775, true, true);
+        }
+
         if (!File::exists(public_path(self::UPLOAD_FOLDER. '/' . $folder))) {
             File::makeDirectory(public_path(self::UPLOAD_FOLDER. '/' . $folder), 0775, true);
         }
@@ -148,43 +152,49 @@ class Files
     {
         $newName = self::generateNewFileName($uploadedFile->getClientOriginalName());
         $tempDir = storage_path('app/temp');
-
-        if (! File::exists($tempDir)) {
-            File::makeDirectory($tempDir, 0755, true);
-        }
-
-        $tempPath = $tempDir.'/'.$newName;
-
-        $manager = new ImageManager(new Driver());
-        $image = $manager->read($uploadedFile->getRealPath());
-        $image->scaleDown(1920, 1920);
-
-        $ext = strtolower(pathinfo($newName, PATHINFO_EXTENSION));
-
-        if (in_array($ext, ['jpg', 'jpeg'], true)) {
-            $image->toJpeg(quality: 75)->save($tempPath);
-        } elseif ($ext === 'png') {
-            $image->toPng()->save($tempPath);
-        } elseif ($ext === 'webp') {
-            $image->toWebp(quality: 75)->save($tempPath);
-        } else {
-            $newName = preg_replace('/\.[^.]+$/', '.jpg', $newName) ?: $newName.'.jpg';
-            $tempPath = $tempDir.'/'.$newName;
-            $image->toJpeg(quality: 75)->save($tempPath);
-        }
-
-        $compressedFile = new UploadedFile(
-            $tempPath,
-            $newName,
-            mime_content_type($tempPath) ?: $uploadedFile->getMimeType(),
-            null,
-            true
-        );
+        $tempPath = null;
 
         try {
+            if (! File::exists($tempDir)) {
+                File::makeDirectory($tempDir, 0777, true, true);
+            }
+
+            $tempPath = $tempDir . '/' . $newName;
+
+            $manager = new ImageManager(new Driver());
+            $image = $manager->read($uploadedFile->getRealPath());
+            $image->scaleDown(1920, 1920);
+
+            $ext = strtolower(pathinfo($newName, PATHINFO_EXTENSION));
+
+            if (in_array($ext, ['jpg', 'jpeg'], true)) {
+                $encoded = $image->toJpeg(quality: 75);
+            } elseif ($ext === 'png') {
+                $encoded = $image->toPng();
+            } elseif ($ext === 'webp') {
+                $encoded = $image->toWebp(quality: 75);
+            } else {
+                $newName = preg_replace('/\.[^.]+$/', '.jpg', $newName) ?: $newName.'.jpg';
+                $tempPath = $tempDir . '/' . $newName;
+                $encoded = $image->toJpeg(quality: 75);
+            }
+
+            File::put($tempPath, (string) $encoded);
+
+            $compressedFile = new UploadedFile(
+                $tempPath,
+                $newName,
+                mime_content_type($tempPath) ?: $uploadedFile->getMimeType(),
+                null,
+                true
+            );
+
             return self::uploadLocalOrS3($compressedFile, $dir);
+        } catch (\Throwable $e) {
+            Log::warning('Image compression failed, falling back to original upload: ' . $e->getMessage());
+            return self::uploadLocalOrS3($uploadedFile, $dir);
         } finally {
-            if (File::exists($tempPath)) {
+            if ($tempPath && File::exists($tempPath)) {
                 File::delete($tempPath);
             }
         }
