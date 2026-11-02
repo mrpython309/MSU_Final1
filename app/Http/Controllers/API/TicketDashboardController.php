@@ -64,6 +64,7 @@ class TicketDashboardController extends Controller
         $departmentMatrix = [];
 
         foreach($departments as $department) {
+            if (strtolower(trim($department->department_name)) === 'general') { continue; }
 
             $departmentMatrix[$department->id] = [
                 'department_name' => $department->department_name,
