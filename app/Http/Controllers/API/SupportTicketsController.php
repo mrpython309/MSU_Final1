@@ -143,7 +143,18 @@ class SupportTicketsController extends Controller
      */
     public function show(string $id)
     {
-        $supportTicket=SupportTicket::with(['company:id,name','branch:id,name','division:id,division_name','asset:id,asset_name','commands','activities','creator:id,name'])->find($id);
+        $supportTicket = SupportTicket::with([
+            'company:id,name',
+            'branch:id,name',
+            'division:id,division_name',
+            'asset:id,asset_name',
+            'commands',
+            'activities',
+            'creator:id,name'
+        ])
+        ->where('id', $id)
+        ->orWhere('ticket_number', $id)
+        ->first();
 
         if(!$supportTicket){
 

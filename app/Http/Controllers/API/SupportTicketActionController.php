@@ -181,10 +181,15 @@ class SupportTicketActionController extends Controller
 
     public function rejectTicket(Request $request, $id)
     {
-        $ticket = SupportTicket::find($id);
+        $target = $id ?: $request->input('ticket_id') ?: $request->input('id');
+        $ticket = SupportTicket::where('id', $target)->orWhere('ticket_number', $target)->first();
 
         if (!$ticket) {
             return $this->error('Ticket not found');
+        }
+
+        if ($ticket->status === 'rejected') {
+            return $this->success('Support Ticket is already rejected.');
         }
 
         if ($ticket->status != 'completed') {
