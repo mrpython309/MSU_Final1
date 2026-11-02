@@ -648,20 +648,6 @@
             </div>
           </div>
 
-          <div class="col-md-3">
-            <div class="d-flex align-items-center mb-4">
-              <div class="avatar flex-shrink-0 me-3">
-                <span class="avatar-initial rounded bg-label-primary">
-                  <i class="bx bx-message-square-detail"></i>
-                </span>
-              </div>
-              <div>
-                <small class="text-muted d-block mb-1">Audit Remarks</small>
-                <span class="fw-normal">{{ $asset->latestAudit?->remarks ?: ($asset->audits?->first()?->remarks ?: '--') }}</span>
-              </div>
-            </div>
-          </div>
-
           {{-- Description + small image (same compact style as assets list name column) --}}
           <div class="col-12">
             <div class="d-flex align-items-start mb-4">
