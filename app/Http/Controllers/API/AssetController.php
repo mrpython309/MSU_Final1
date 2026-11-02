@@ -49,7 +49,17 @@ class AssetController extends Controller
     })
 
     ->when($request->status, function ($q) use ($request) {
-        $q->where('status', $request->status);
+        $status = (string) $request->status;
+        if ($status === 'all' || trim($status) === '') {
+            return;
+        }
+        $table = $q->getModel()->getTable();
+        $expr = Asset::sqlChartStatusBucketExpression($table);
+        $q->whereRaw("{$expr} = ?", [$status]);
+    })
+
+    ->when($request->operational_status, function ($q) use ($request) {
+        $q->where('operational_status', $request->operational_status);
     })
 
     ->when($request->condition, function ($q) use ($request) {
