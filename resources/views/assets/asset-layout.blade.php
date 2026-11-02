@@ -658,7 +658,7 @@
               </div>
               <div class="flex-grow-1 min-w-0">
                 <small class="text-muted d-block mb-1">Notes</small>
-                <span class="fw-normal">{{ $asset->description ?: ($asset->latestAudit?->remarks ?: ($asset->audits?->first()?->remarks ?: '--')) }}</span>
+                <span class="fw-normal">{{ $asset->description ?? '--' }}</span>
               </div>
               @if($asset->icon == 'images' && $asset->doc_url)
               <div class="avatar-wrapper flex-shrink-0 ms-3 mt-1">
