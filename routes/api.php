@@ -161,6 +161,7 @@ Route::prefix('v1')->group(function () {
         Route::post('support-tickets/accept/{id}', [SupportTicketActionController::class, 'acceptTicket'])->name('api.support-tickets.accept');
         Route::post('support-tickets/close/{id}', [SupportTicketActionController::class, 'closeTicket'])->name('api.support-tickets.close');
         Route::post('support-tickets/reopen/{id}', [SupportTicketActionController::class, 'reopenTicket'])->name('api.support-tickets.reopen');
+        Route::post('support-tickets/reject/{id}', [SupportTicketActionController::class, 'rejectTicket'])->name('api.support-tickets.reject');
         Route::post('support-tickets/complete/{id}', [SupportTicketActionController::class, 'completeTicket'])->name('api.support-tickets.complete');
         Route::post('support-tickets/exit/{id}', [SupportTicketActionController::class, 'exitTicket'])->name('api.support-tickets.exit');
         Route::post('support-tickets/assign/{id}', [SupportTicketActionController::class, 'assignTicket'])->name('api.support-tickets.assign');
@@ -168,6 +169,7 @@ Route::prefix('v1')->group(function () {
         Route::get('support-tickets/assignedlist/{id}',[SupportTicketActionController::class,'getAssignedPersons'])->name('api.support-tickets.assignedpersons');
         Route::get('support-tickets/activitylogs/{id}',[SupportTicketActionController::class,'getActivityLogs'])->name('api.support-tickets.activitylogs');
         Route::get('support-tickets/assignableusers/{id}',[SupportTicketActionController::class,'getAssignableUsers'])->name('api.support-tickets.assignableusers');
+        Route::get('support-tickets/progress-statuses', [SupportTicketsController::class, 'progressStatuses'])->name('api.support-tickets.progress-statuses');
         Route::get('support-tickets/status', [SupportTicketsController::class, 'status'])->name('api.support-tickets.status');
         Route::get('support-tickets/priority', [SupportTicketsController::class, 'priority'])->name('api.support-tickets.priority');
         Route::resource('support-tickets/commands',SupportTicketCommandsController::class)->names('api.support-tickets.commands');

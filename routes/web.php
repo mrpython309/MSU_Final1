@@ -1216,6 +1216,7 @@ Route::middleware(['auth'])->group(function () {
     Route::put('support-ticket/assign/{ticket}', [SupportTicketController::class, 'assignTicket'])->name('support-ticket.assignticket');
     Route::post('support-ticket/reply/{ticket}', [SupportTicketController::class, 'replyTicket'])->name('support-ticket.replyticket');
     Route::put('support-ticket/update-status/{ticket}', [SupportTicketController::class, 'updateStatus'])->name('support-ticket.status.update');
+    Route::get('support-ticket/progress-statuses', [SupportTicketProgressStatusController::class, 'index'])->name('support-ticket.progress-statuses.index');
     Route::post('support-ticket/progress-statuses', [SupportTicketProgressStatusController::class, 'store'])->name('support-ticket.progress-statuses.store');
     Route::put('support-ticket/progress-statuses/{progressStatus}', [SupportTicketProgressStatusController::class, 'update'])->name('support-ticket.progress-statuses.update');
     Route::delete('support-ticket/progress-statuses/{progressStatus}', [SupportTicketProgressStatusController::class, 'destroy'])->name('support-ticket.progress-statuses.destroy');

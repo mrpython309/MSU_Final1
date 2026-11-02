@@ -13,6 +13,14 @@ use Illuminate\Validation\ValidationException;
 
 class SupportTicketProgressStatusController extends Controller
 {
+    public function index()
+    {
+        return response()->json([
+            'success' => true,
+            'data' => SupportTicketProgressStatus::selectable(),
+        ]);
+    }
+
     public function store(Request $request)
     {
         $this->ensureAdmin();

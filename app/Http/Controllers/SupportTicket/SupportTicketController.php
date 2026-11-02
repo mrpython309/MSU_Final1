@@ -552,9 +552,25 @@ class SupportTicketController extends Controller
     {
         $rules = SupportTicketCompletionFileService::validationRules();
 
+        if ($request->has('vendor_id') && ($request->vendor_id === '' || $request->vendor_id === 'null')) {
+            $request->merge(['vendor_id' => null]);
+        }
+        if ($request->has('total_cost') && ($request->total_cost === '' || $request->total_cost === 'null')) {
+            $request->merge(['total_cost' => null]);
+        }
+
         if ($ticket->asset_id) {
-            $rules['vendor_id'] = ['required', 'exists:vendors,id'];
-            $rules['total_cost'] = ['required', 'numeric', 'min:0'];
+            if (!$request->filled('vendor_id')) {
+                $fallbackVendorId = $ticket->vendor_id ?: ($ticket->asset?->vendor_id ?: \App\Models\Vendor::value('id'));
+                if ($fallbackVendorId) {
+                    $request->merge(['vendor_id' => $fallbackVendorId]);
+                }
+            }
+            if (!$request->filled('total_cost')) {
+                $request->merge(['total_cost' => 0]);
+            }
+            $rules['vendor_id'] = ['nullable', 'exists:vendors,id'];
+            $rules['total_cost'] = ['nullable', 'numeric', 'min:0'];
         } else {
             $rules['vendor_id'] = ['nullable', 'exists:vendors,id'];
             $rules['total_cost'] = ['nullable', 'numeric', 'min:0'];

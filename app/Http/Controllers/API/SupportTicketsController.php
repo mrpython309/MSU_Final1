@@ -9,6 +9,7 @@ use App\Models\SupportTicket;
 use App\Http\Requests\SupportTicket\SaveSupportTicketRequest;
 use App\SupportTicketPriority;
 use App\SupportTicketStatus;
+use App\Models\SupportTicketProgressStatus;
 use App\Models\SupportTicketActivity;
 use App\Helpers\Files;
 use Illuminate\Support\Facades\DB;
@@ -249,10 +250,42 @@ class SupportTicketsController extends Controller
     }
 
     public function status(){
+        try {
+            $dynamic = SupportTicketProgressStatus::query()
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get();
+
+            if ($dynamic->isNotEmpty()) {
+                return $this->success($dynamic->map(function ($item) {
+                    return [
+                        'id' => $item->id,
+                        'name' => $item->name,
+                        'slug' => $item->slug,
+                    ];
+                }));
+            }
+        } catch (\Throwable $e) {}
 
         $status=SupportTicketStatus::cases();
 
         return $this->success($status);
+    }
+
+    public function progressStatuses(){
+        try {
+            $dynamic = SupportTicketProgressStatus::selectable();
+            return $this->success($dynamic->map(function ($item) {
+                return [
+                    'id' => $item->id,
+                    'name' => $item->name,
+                    'slug' => $item->slug,
+                ];
+            }));
+        } catch (\Throwable $e) {
+            return $this->success([]);
+        }
     }
 
     public function priority(){

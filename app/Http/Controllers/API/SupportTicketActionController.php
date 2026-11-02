@@ -18,6 +18,7 @@ use App\Jobs\SendPushNotification;
 use App\Helpers\Files;
 use App\Services\SupportTicketCompletionFileService;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Str;
 
 class SupportTicketActionController extends Controller
 {
@@ -178,6 +179,55 @@ class SupportTicketActionController extends Controller
 
     }
 
+    public function rejectTicket(Request $request, $id)
+    {
+        $ticket = SupportTicket::find($id);
+
+        if (!$ticket) {
+            return $this->error('Ticket not found');
+        }
+
+        if ($ticket->status != 'completed') {
+            return $this->error('Support Ticket cannot be Rejected.');
+        }
+
+        $request->validate([
+            'reject_reason' => 'required|string|max:5000',
+        ]);
+
+        $ticket->status = 'rejected';
+        $ticket->save();
+
+        // Save rejection reason as command response
+        $command = new SupportTicketCommand();
+        $command->support_ticket_id = $ticket->id;
+        $command->user_id = auth()->id();
+        $command->ticket_response = 'Rejected: ' . $request->reject_reason;
+        $command->save();
+
+        SupportTicketActivity::create([
+            'support_ticket_id' => $ticket->id,
+            'user_id' => auth()->id(),
+            'event' => 'rejected',
+            'meta' => ['reason' => $request->reject_reason],
+        ]);
+
+        $ticketTokens = $ticket->getAssignedAndCreatorDeviceTokens();
+
+        if (!empty($ticketTokens)) {
+            $title = "Ticket Rejected";
+            $message = "Your completed ticket #{$ticket->id} has been rejected: " . Str::limit($request->reject_reason, 50);
+            $data = [
+                'type' => 'support_ticket',
+                'ref_id' => (string)$ticket->id
+            ];
+
+            SendPushNotification::dispatch($ticketTokens, $title, $message, $data);
+        }
+
+        return $this->success('Support Ticket rejected successfully.');
+    }
+
 
     public function completeTicket(Request $request, $id)
     {
@@ -189,9 +239,26 @@ class SupportTicketActionController extends Controller
 
         $rules = SupportTicketCompletionFileService::validationRules(api: true);
 
+        // Sanitize / normalize empty string or null string inputs
+        if ($request->has('vendor_id') && ($request->vendor_id === '' || $request->vendor_id === 'null')) {
+            $request->merge(['vendor_id' => null]);
+        }
+        if ($request->has('total_cost') && ($request->total_cost === '' || $request->total_cost === 'null')) {
+            $request->merge(['total_cost' => null]);
+        }
+
         if ($ticket->asset_id) {
-            $rules['vendor_id'] = ['required', 'exists:vendors,id'];
-            $rules['total_cost'] = ['required', 'numeric', 'min:0'];
+            if (!$request->filled('vendor_id')) {
+                $fallbackVendorId = $ticket->vendor_id ?: ($ticket->asset?->vendor_id ?: \App\Models\Vendor::value('id'));
+                if ($fallbackVendorId) {
+                    $request->merge(['vendor_id' => $fallbackVendorId]);
+                }
+            }
+            if (!$request->filled('total_cost')) {
+                $request->merge(['total_cost' => 0]);
+            }
+            $rules['vendor_id'] = ['nullable', 'exists:vendors,id'];
+            $rules['total_cost'] = ['nullable', 'numeric', 'min:0'];
         } else {
             $rules['vendor_id'] = ['nullable', 'exists:vendors,id'];
             $rules['total_cost'] = ['nullable', 'numeric', 'min:0'];
@@ -361,6 +428,7 @@ class SupportTicketActionController extends Controller
             ->where('is_active', true)
             ->pluck('slug')
             ->push('completed')
+            ->push('rejected')
             ->unique()
             ->values()
             ->all();
