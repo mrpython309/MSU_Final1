@@ -88,6 +88,10 @@ class MobilePermissionController extends Controller
         $role = Role::findOrFail($request->role_id);
         $selectedKeys = $request->input('permissions', []);
 
+        // Link Support Tickets (view) and Create Tickets together:
+        // Enabling one enables both; disabling one disables both.
+        $selectedKeys = $this->syncLinkedTicketPermissions($selectedKeys);
+
         $mobileKeys = array_keys(self::MOBILE_PERMISSIONS);
 
         // Keep all existing non-mobile permissions (web permissions untouched!)
@@ -123,6 +127,10 @@ class MobilePermissionController extends Controller
 
         $user = User::findOrFail($request->user_id);
         $selectedKeys = $request->input('permissions', []);
+
+        // Link Support Tickets (view) and Create Tickets together:
+        // Enabling one enables both; disabling one disables both.
+        $selectedKeys = $this->syncLinkedTicketPermissions($selectedKeys);
 
         $mobileKeys = array_keys(self::MOBILE_PERMISSIONS);
 
@@ -170,5 +178,31 @@ class MobilePermissionController extends Controller
                 ]);
             }
         }
+    }
+
+    /**
+     * Link mobile.support-ticket:view and mobile.support-ticket:create together:
+     * If either is enabled, both are enabled. If neither or one is turned off, both are removed.
+     */
+    private function syncLinkedTicketPermissions(array $permissions): array
+    {
+        $hasTicketView = in_array('mobile.support-ticket:view', $permissions, true);
+        $hasTicketCreate = in_array('mobile.support-ticket:create', $permissions, true);
+
+        if ($hasTicketView || $hasTicketCreate) {
+            if (!$hasTicketView) {
+                $permissions[] = 'mobile.support-ticket:view';
+            }
+            if (!$hasTicketCreate) {
+                $permissions[] = 'mobile.support-ticket:create';
+            }
+        } else {
+            $permissions = array_values(array_diff($permissions, [
+                'mobile.support-ticket:view',
+                'mobile.support-ticket:create',
+            ]));
+        }
+
+        return array_values(array_unique($permissions));
     }
 }

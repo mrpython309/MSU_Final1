@@ -116,6 +116,7 @@
                       @foreach($mobilePermissions as $key => $info)
                         @php
                           $hasPerm = in_array($key, $rolePerms, true) || $isSuperAdmin;
+                          $isTicketPerm = in_array($key, ['mobile.support-ticket:view', 'mobile.support-ticket:create'], true);
                         @endphp
                         <td class="text-center">
                           <div class="form-check form-switch d-inline-block">
@@ -126,6 +127,10 @@
                               value="{{ $key }}"
                               form="form-role-{{ $role->id }}"
                               id="perm-{{ $role->id }}-{{ md5($key) }}"
+                              @if($isTicketPerm)
+                                data-linked-group="support-ticket"
+                                title="Linked with {{ $key === 'mobile.support-ticket:view' ? 'Create Tickets' : 'Support Tickets' }}"
+                              @endif
                               {{ $hasPerm ? 'checked' : '' }}
                               {{ $isSuperAdmin ? 'disabled' : '' }}
                             >
@@ -154,4 +159,31 @@
     </div>
   </div>
 </div>
+@endsection
+
+@section('page-script')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const ticketViewKey = 'mobile.support-ticket:view';
+  const ticketCreateKey = 'mobile.support-ticket:create';
+
+  document.addEventListener('change', function (e) {
+    const target = e.target;
+    if (!target || !target.classList.contains('role-perm-toggle')) return;
+
+    const val = target.value;
+    if (val !== ticketViewKey && val !== ticketCreateKey) return;
+
+    const row = target.closest('tr');
+    if (!row) return;
+
+    const partnerKey = (val === ticketViewKey) ? ticketCreateKey : ticketViewKey;
+    const partner = row.querySelector('input.role-perm-toggle[value="' + partnerKey + '"]');
+
+    if (partner && !partner.disabled && partner.checked !== target.checked) {
+      partner.checked = target.checked;
+    }
+  });
+});
+</script>
 @endsection
