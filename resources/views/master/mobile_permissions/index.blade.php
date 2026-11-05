@@ -161,9 +161,9 @@
 </div>
 @endsection
 
-@section('page-script')
+@push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', function () {
+(function () {
   const ticketViewKey = 'mobile.support-ticket:view';
   const ticketCreateKey = 'mobile.support-ticket:create';
 
@@ -184,6 +184,6 @@ document.addEventListener('DOMContentLoaded', function () {
       partner.checked = target.checked;
     }
   });
-});
+})();
 </script>
-@endsection
+@endpush
