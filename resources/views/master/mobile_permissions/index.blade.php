@@ -14,7 +14,7 @@
               <i class="bx bx-mobile-alt me-2"></i>Mobile App Module Permissions
             </h4>
             <p class="mb-0 text-white-50">
-              Configure real-time module access for the Mobile Application (Dashboard, Assets, Asset Audit, Support Tickets).
+              Configure real-time module access for the Mobile Application (Assets, Asset Audit, Support Tickets, Create Tickets). Dashboard is universal and automatically adapts to these permissions.
             </p>
           </div>
           <div class="d-flex gap-2">
@@ -49,11 +49,11 @@
           </div>
         </div>
       @endforeach
-      <div class="col-md-2 col-sm-4 col-6">
+      <div class="col-md-4 col-sm-8 col-12">
         <div class="card h-100 border-0 shadow-sm bg-light">
           <div class="card-body p-3 text-center d-flex flex-column justify-content-center">
-            <span class="badge bg-label-secondary mb-1">Super Admin Note</span>
-            <small class="text-muted" style="font-size: 0.72rem;">Super Admins automatically have full access to all 4 modules.</small>
+            <span class="badge bg-label-info mb-1"><i class="bx bx-info-circle me-1"></i> Universal Mobile Dashboard</span>
+            <small class="text-muted" style="font-size: 0.78rem;">The Dashboard is always accessible to all users as their home screen, and dynamically displays only the modules enabled above.</small>
           </div>
         </div>
       </div>

@@ -15,14 +15,6 @@ class MobilePermissionController extends Controller
      * has ZERO side-effects on the web application.
      */
     public const MOBILE_PERMISSIONS = [
-        'mobile.dashboard:view' => [
-            'key' => 'mobile.dashboard:view',
-            'client_key' => 'dashboard:view',
-            'name' => 'Dashboard',
-            'description' => 'Access mobile home metrics, status overviews and dashboards',
-            'icon' => 'bx bx-home-circle',
-            'color' => 'primary',
-        ],
         'mobile.asset:view' => [
             'key' => 'mobile.asset:view',
             'client_key' => 'asset:view',
